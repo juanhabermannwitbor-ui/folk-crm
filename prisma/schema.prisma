@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ContactCategory {
+  LEAD
+  CLIENT
+  PARTNER
+  INTERESTING
+}
+
+enum ContactSource {
+  MANUAL
+  LINKEDIN_EXTENSION
+  IMPORT
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  PAUSED
+  STOPPED
+  COMPLETED
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  members      WorkspaceMember[]
+  contacts      Contact[]
+  pipelineStages PipelineStage[]
+  apiTokens     ApiToken[]
+  sequences     Sequence[]
+}
+
+// One row per Supabase auth user that belongs to a workspace.
+model WorkspaceMember {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String    @unique // Supabase auth.users.id
+  email       String
+  role        String    @default("owner")
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId])
+}
+
+model PipelineStage {
+  id          String   @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  color       String   @default("#6366f1")
+  order       Int
+  createdAt   DateTime @default(now())
+
+  contacts Contact[]
+
+  @@index([workspaceId])
+  @@unique([workspaceId, order])
+}
+
+model Contact {
+  id          String          @id @default(cuid())
+  workspaceId String
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  category    ContactCategory @default(LEAD)
+  source      ContactSource   @default(MANUAL)
+
+  fullName    String
+  headline    String?
+  company     String?
+  title       String?
+  location    String?
+  email       String?
+  phone       String?
+  linkedinUrl String?
+  avatarUrl   String?
+  notes       String?
+  tags        String[]        @default([])
+
+  // Only meaningful while category = LEAD
+  pipelineStageId String?
+  pipelineStage   PipelineStage? @relation(fields: [pipelineStageId], references: [id], onDelete: SetNull)
+  stageOrder      Int            @default(0)
+  dealValue       Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sequenceEnrollments SequenceEnrollment[]
+
+  @@index([workspaceId, category])
+  @@index([pipelineStageId])
+}
+
+// A sequence is authored here (steps + personalized copy) and tracks who is
+// enrolled at which step. Actually *sending* the steps needs a verified
+// sending domain the workspace doesn't have yet, so enrollments just record
+// intended state for now — there is no scheduler dispatching emails.
+model Sequence {
+  id          String   @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  steps       SequenceStep[]
+  enrollments SequenceEnrollment[]
+
+  @@index([workspaceId])
+}
+
+model SequenceStep {
+  id         String   @id @default(cuid())
+  sequenceId String
+  sequence   Sequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  order      Int
+  delayDays  Int      @default(0) // days to wait after the previous step fires
+  subject    String
+  body       String
+
+  @@index([sequenceId])
+  @@unique([sequenceId, order])
+}
+
+model SequenceEnrollment {
+  id          String           @id @default(cuid())
+  sequenceId  String
+  sequence    Sequence         @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  contactId   String
+  contact     Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  status      EnrollmentStatus @default(ACTIVE)
+  currentStep Int              @default(0)
+  enrolledAt  DateTime         @default(now())
+
+  @@unique([sequenceId, contactId])
+  @@index([contactId])
+}
+
+model ApiToken {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String    @default("Chrome extension")
+  tokenHash   String    @unique
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId])
+}

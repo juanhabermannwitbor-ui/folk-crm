@@ -117,6 +117,10 @@ model Task {
   dueDate     DateTime?
   completed   Boolean   @default(false)
   completedAt DateTime?
+  // True for the one task auto-generated from a contact's "Próximo
+  // seguimiento" date, kept in sync whenever that date changes — as
+  // opposed to a task the user added by hand from the Tareas page.
+  isFollowUp  Boolean   @default(false)
 
   createdAt DateTime @default(now())
 

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireWorkspace } from "@/lib/workspace";
 import { updateContactSchema } from "@/lib/validation";
+import { syncFollowUpTask } from "@/lib/followUpTask";
 
 async function loadOwnedContact(workspaceId: string, id: string) {
   const contact = await prisma.contact.findUnique({ where: { id } });
@@ -56,6 +57,8 @@ export async function PATCH(
           : {}),
     },
   });
+
+  await syncFollowUpTask(contact);
 
   return NextResponse.json({ contact });
 }

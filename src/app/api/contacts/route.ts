@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireWorkspace } from "@/lib/workspace";
 import { createContactSchema, contactCategorySchema } from "@/lib/validation";
+import { syncFollowUpTask } from "@/lib/followUpTask";
 
 export async function GET(request: NextRequest) {
   const ctx = await requireWorkspace();
@@ -63,6 +64,8 @@ export async function POST(request: NextRequest) {
       stageOrder,
     },
   });
+
+  if (contact.nextFollowUpAt) await syncFollowUpTask(contact);
 
   return NextResponse.json({ contact }, { status: 201 });
 }

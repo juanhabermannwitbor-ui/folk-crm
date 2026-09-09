@@ -28,6 +28,13 @@ enum EnrollmentStatus {
   COMPLETED
 }
 
+enum FollowUpAction {
+  CALL
+  EMAIL
+  LINKEDIN
+  WHATSAPP
+}
+
 model Workspace {
   id        String   @id @default(cuid())
   name      String
@@ -88,7 +95,8 @@ model Contact {
   avatarUrl   String?
   notes       String?
   tags        String[]        @default([])
-  nextFollowUpAt DateTime?
+  nextFollowUpAt     DateTime?
+  nextFollowUpAction FollowUpAction?
 
   // Only meaningful while category = LEAD
   pipelineStageId String?
@@ -114,6 +122,7 @@ model Task {
   contact     Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
 
   title       String
+  actionType  FollowUpAction?
   dueDate     DateTime?
   completed   Boolean   @default(false)
   completedAt DateTime?

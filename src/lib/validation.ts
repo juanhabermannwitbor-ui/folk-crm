@@ -7,6 +7,8 @@ export const contactCategorySchema = z.enum([
   "INTERESTING",
 ]);
 
+export const followUpActionSchema = z.enum(["CALL", "EMAIL", "LINKEDIN", "WHATSAPP"]);
+
 export const createContactSchema = z.object({
   fullName: z.string().trim().min(1, "Name is required").max(200),
   category: contactCategorySchema.default("LEAD"),
@@ -28,6 +30,7 @@ export const createContactSchema = z.object({
     .optional()
     .nullable()
     .or(z.literal("")),
+  nextFollowUpAction: followUpActionSchema.optional().nullable().or(z.literal("")),
 });
 
 export const updateContactSchema = createContactSchema.partial().extend({
@@ -97,6 +100,7 @@ export const createTaskSchema = z.object({
   title: z.string().trim().min(1, "El título es obligatorio").max(300),
   dueDate: optionalDateString,
   contactId: z.string().cuid().optional().nullable(),
+  actionType: followUpActionSchema.optional().nullable(),
 });
 
 export const updateTaskSchema = z.object({
@@ -104,6 +108,7 @@ export const updateTaskSchema = z.object({
   dueDate: optionalDateString,
   contactId: z.string().cuid().optional().nullable(),
   completed: z.boolean().optional(),
+  actionType: followUpActionSchema.optional().nullable(),
 });
 
 export const composeMessageSchema = z.object({

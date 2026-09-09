@@ -49,6 +49,9 @@ export async function PATCH(
       ...(data.nextFollowUpAt !== undefined
         ? { nextFollowUpAt: data.nextFollowUpAt ? new Date(data.nextFollowUpAt) : null }
         : {}),
+      ...(data.nextFollowUpAction !== undefined
+        ? { nextFollowUpAction: data.nextFollowUpAction || null }
+        : {}),
       ...(data.stageOrder !== undefined ? { stageOrder: data.stageOrder } : {}),
       ...(nextCategory !== "LEAD"
         ? { pipelineStageId: null }

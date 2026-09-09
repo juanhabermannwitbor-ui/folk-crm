@@ -44,6 +44,7 @@ export async function PATCH(
       ...(data.completed !== undefined
         ? { completed: data.completed, completedAt: data.completed ? new Date() : null }
         : {}),
+      ...(data.actionType !== undefined ? { actionType: data.actionType || null } : {}),
     },
     include: { contact: true },
   });

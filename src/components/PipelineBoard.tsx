@@ -19,26 +19,10 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Plus, MoreHorizontal, Building2, MapPin, Clock } from "lucide-react";
+import { Plus, MoreHorizontal, Building2, MapPin } from "lucide-react";
 import type { Contact, PipelineStage } from "@/lib/types";
 import { ContactFormModal } from "@/components/ContactFormModal";
-
-function formatFollowUp(dateStr: string | null) {
-  if (!dateStr) return null;
-  // The date is stored as a bare calendar date (UTC midnight) with no
-  // meaningful time-of-day — formatting/comparing in the viewer's local
-  // timezone would shift it a day earlier for anyone west of UTC.
-  const date = new Date(dateStr);
-  const todayUtc = new Date();
-  todayUtc.setUTCHours(0, 0, 0, 0);
-  const overdue = date < todayUtc;
-  const label = date.toLocaleDateString("es-ES", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  });
-  return { label, overdue };
-}
+import { FollowUpBadge } from "@/components/FollowUpBadge";
 
 type ColumnsState = Record<string, Contact[]>;
 
@@ -422,20 +406,15 @@ function LeadCard({
           {contact.dealValue.toLocaleString("es-ES")} €
         </p>
       ) : null}
-      {(() => {
-        const followUp = formatFollowUp(contact.nextFollowUpAt);
-        if (!followUp) return null;
-        return (
-          <span
-            className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-              followUp.overdue ? "bg-red-50 text-red-600" : "bg-neutral-100 text-neutral-500"
-            }`}
-          >
-            <Clock size={10} />
-            {followUp.label}
-          </span>
-        );
-      })()}
+      {contact.nextFollowUpAt && (
+        <div className="mt-2">
+          <FollowUpBadge
+            dueDate={contact.nextFollowUpAt}
+            actionType={contact.nextFollowUpAction}
+            size="xs"
+          />
+        </div>
+      )}
     </div>
   );
 }

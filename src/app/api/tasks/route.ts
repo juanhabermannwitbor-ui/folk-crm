@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
       title: data.title,
       dueDate: data.dueDate ? new Date(data.dueDate) : null,
       contactId: data.contactId || null,
+      actionType: data.actionType || null,
     },
     include: { contact: true },
   });

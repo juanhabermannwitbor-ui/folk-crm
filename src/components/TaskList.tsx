@@ -1,25 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Trash2, Clock, ChevronDown, ChevronRight } from "lucide-react";
-import type { Contact, Task } from "@/lib/types";
-import { CATEGORY_LABELS } from "@/lib/types";
+import { Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import type { Contact, FollowUpAction, Task } from "@/lib/types";
+import { CATEGORY_LABELS, FOLLOW_UP_ACTION_LABELS } from "@/lib/types";
+import { FollowUpBadge } from "@/components/FollowUpBadge";
 
 type ContactOption = Pick<Contact, "id" | "fullName" | "category">;
-
-function formatDue(dateStr: string | null) {
-  if (!dateStr) return null;
-  const date = new Date(dateStr);
-  const todayUtc = new Date();
-  todayUtc.setUTCHours(0, 0, 0, 0);
-  const overdue = date < todayUtc;
-  const label = date.toLocaleDateString("es-ES", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  });
-  return { label, overdue };
-}
 
 export function TaskList({
   initialTasks,
@@ -34,6 +21,7 @@ export function TaskList({
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [contactId, setContactId] = useState("");
+  const [actionType, setActionType] = useState<FollowUpAction | "">("");
   const [saving, setSaving] = useState(false);
 
   const pending = useMemo(() => tasks.filter((t) => !t.completed), [tasks]);
@@ -49,6 +37,7 @@ export function TaskList({
         title: title.trim(),
         dueDate: dueDate || null,
         contactId: contactId || null,
+        actionType: actionType || null,
       }),
     });
     setSaving(false);
@@ -58,6 +47,7 @@ export function TaskList({
     setTitle("");
     setDueDate("");
     setContactId("");
+    setActionType("");
     setShowForm(false);
   }
 
@@ -112,6 +102,18 @@ export function TaskList({
                 onChange={(e) => setDueDate(e.target.value)}
                 className="rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm outline-none focus:border-neutral-900"
               />
+              <select
+                value={actionType}
+                onChange={(e) => setActionType(e.target.value as FollowUpAction | "")}
+                className="rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm outline-none focus:border-neutral-900"
+              >
+                <option value="">— tipo de acción —</option>
+                {(Object.keys(FOLLOW_UP_ACTION_LABELS) as FollowUpAction[]).map((a) => (
+                  <option key={a} value={a}>
+                    {FOLLOW_UP_ACTION_LABELS[a]}
+                  </option>
+                ))}
+              </select>
               <select
                 value={contactId}
                 onChange={(e) => setContactId(e.target.value)}
@@ -187,8 +189,6 @@ function TaskRow({
   onToggle: (task: Task) => void;
   onDelete: (id: string) => void;
 }) {
-  const due = formatDue(task.dueDate);
-
   return (
     <li className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white px-3 py-2.5">
       <input
@@ -209,15 +209,8 @@ function TaskRow({
           <p className="truncate text-xs text-neutral-400">{task.contact.fullName}</p>
         )}
       </div>
-      {due && !task.completed && (
-        <span
-          className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-            due.overdue ? "bg-red-50 text-red-600" : "bg-neutral-100 text-neutral-600"
-          }`}
-        >
-          <Clock size={11} />
-          {due.label}
-        </span>
+      {!task.completed && (
+        <FollowUpBadge dueDate={task.dueDate} actionType={task.actionType} />
       )}
       <button
         onClick={() => onDelete(task.id)}

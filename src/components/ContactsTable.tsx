@@ -1,26 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Search, Trash2, ExternalLink, Clock } from "lucide-react";
+import { Plus, Search, Trash2, ExternalLink } from "lucide-react";
 import type { Contact, ContactCategory, PipelineStage } from "@/lib/types";
 import { ContactFormModal } from "@/components/ContactFormModal";
-
-function formatFollowUp(dateStr: string | null) {
-  if (!dateStr) return null;
-  // The date is stored as a bare calendar date (UTC midnight) with no
-  // meaningful time-of-day — formatting/comparing in the viewer's local
-  // timezone would shift it a day earlier for anyone west of UTC.
-  const date = new Date(dateStr);
-  const todayUtc = new Date();
-  todayUtc.setUTCHours(0, 0, 0, 0);
-  const overdue = date < todayUtc;
-  const label = date.toLocaleDateString("es-ES", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  });
-  return { label, overdue };
-}
+import { FollowUpBadge } from "@/components/FollowUpBadge";
 
 export function ContactsTable({
   category,
@@ -149,22 +133,8 @@ export function ContactsTable({
                     </td>
                     <td className="px-4 py-2.5 text-neutral-600">{c.location || "—"}</td>
                     <td className="px-4 py-2.5">
-                      {(() => {
-                        const followUp = formatFollowUp(c.nextFollowUpAt);
-                        if (!followUp) return <span className="text-neutral-400">—</span>;
-                        return (
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                              followUp.overdue
-                                ? "bg-red-50 text-red-600"
-                                : "bg-neutral-100 text-neutral-600"
-                            }`}
-                          >
-                            <Clock size={11} />
-                            {followUp.label}
-                          </span>
-                        );
-                      })()}
+                      <FollowUpBadge dueDate={c.nextFollowUpAt} actionType={c.nextFollowUpAction} />
+                      {!c.nextFollowUpAt && <span className="text-neutral-400">—</span>}
                     </td>
                     <td className="px-4 py-2.5 text-right">
                       <button

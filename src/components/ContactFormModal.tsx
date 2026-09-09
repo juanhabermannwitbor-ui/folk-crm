@@ -2,8 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { Sparkles, X } from "lucide-react";
-import type { Contact, ContactCategory, PipelineStage } from "@/lib/types";
-import { CATEGORY_LABELS } from "@/lib/types";
+import type { Contact, ContactCategory, FollowUpAction, PipelineStage } from "@/lib/types";
+import { CATEGORY_LABELS, FOLLOW_UP_ACTION_LABELS } from "@/lib/types";
 import { AiComposeModal } from "@/components/AiComposeModal";
 
 type Props = {
@@ -29,6 +29,9 @@ export function ContactFormModal({ category, contact, stages, defaultStageId, on
   const [nextFollowUpAt, setNextFollowUpAt] = useState(
     contact?.nextFollowUpAt ? contact.nextFollowUpAt.slice(0, 10) : ""
   );
+  const [nextFollowUpAction, setNextFollowUpAction] = useState<FollowUpAction | "">(
+    contact?.nextFollowUpAction ?? ""
+  );
   const [pipelineStageId, setPipelineStageId] = useState(
     contact?.pipelineStageId ?? defaultStageId ?? stages?.[0]?.id ?? ""
   );
@@ -53,6 +56,7 @@ export function ContactFormModal({ category, contact, stages, defaultStageId, on
       notes: notes || null,
       dealValue: dealValue ? Number(dealValue) : null,
       nextFollowUpAt: nextFollowUpAt || null,
+      nextFollowUpAction: nextFollowUpAt ? nextFollowUpAction || null : null,
       ...(selectedCategory === "LEAD"
         ? { pipelineStageId: pipelineStageId || stages?.[0]?.id || null }
         : {}),
@@ -191,14 +195,31 @@ export function ContactFormModal({ category, contact, stages, defaultStageId, on
             </div>
           )}
 
-          <Field label="Próximo seguimiento">
-            <input
-              type="date"
-              value={nextFollowUpAt}
-              onChange={(e) => setNextFollowUpAt(e.target.value)}
-              className="input"
-            />
-          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Próximo seguimiento">
+              <input
+                type="date"
+                value={nextFollowUpAt}
+                onChange={(e) => setNextFollowUpAt(e.target.value)}
+                className="input"
+              />
+            </Field>
+            <Field label="Acción">
+              <select
+                value={nextFollowUpAction}
+                onChange={(e) => setNextFollowUpAction(e.target.value as FollowUpAction | "")}
+                disabled={!nextFollowUpAt}
+                className="input disabled:opacity-50"
+              >
+                <option value="">— sin especificar —</option>
+                {(Object.keys(FOLLOW_UP_ACTION_LABELS) as FollowUpAction[]).map((a) => (
+                  <option key={a} value={a}>
+                    {FOLLOW_UP_ACTION_LABELS[a]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
 
           <Field label="Notas">
             <textarea

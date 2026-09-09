@@ -1,5 +1,13 @@
 export type ContactCategory = "LEAD" | "CLIENT" | "PARTNER" | "INTERESTING";
 export type ContactSource = "MANUAL" | "LINKEDIN_EXTENSION" | "IMPORT";
+export type FollowUpAction = "CALL" | "EMAIL" | "LINKEDIN" | "WHATSAPP";
+
+export const FOLLOW_UP_ACTION_LABELS: Record<FollowUpAction, string> = {
+  CALL: "Llamada",
+  EMAIL: "Email",
+  LINKEDIN: "Mensaje LinkedIn",
+  WHATSAPP: "WhatsApp",
+};
 
 export type PipelineStage = {
   id: string;
@@ -28,6 +36,7 @@ export type Contact = {
   stageOrder: number;
   dealValue: number | null;
   nextFollowUpAt: string | null;
+  nextFollowUpAction: FollowUpAction | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -86,6 +95,7 @@ export const ENROLLMENT_STATUS_LABELS: Record<EnrollmentStatus, string> = {
 export type Task = {
   id: string;
   title: string;
+  actionType: FollowUpAction | null;
   dueDate: string | null;
   completed: boolean;
   completedAt: string | null;

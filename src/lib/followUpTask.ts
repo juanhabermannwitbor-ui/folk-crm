@@ -1,10 +1,11 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { Contact } from "@prisma/client";
+import { FOLLOW_UP_ACTION_LABELS } from "@/lib/types";
 
-// Keeps a contact's "Próximo seguimiento" date mirrored as a task on the
-// Tareas page. One-directional: editing the date here creates/updates/
-// removes the linked task; completing that task does not clear the date
+// Keeps a contact's "Próximo seguimiento" (date + action) mirrored as a task
+// on the Tareas page. One-directional: editing it here creates/updates/
+// removes the linked task; completing that task does not clear the fields
 // back on the contact.
 export async function syncFollowUpTask(contact: Contact) {
   const existing = await prisma.task.findFirst({
@@ -16,7 +17,9 @@ export async function syncFollowUpTask(contact: Contact) {
     return;
   }
 
-  const title = `Seguimiento: ${contact.fullName}`;
+  const title = contact.nextFollowUpAction
+    ? `${FOLLOW_UP_ACTION_LABELS[contact.nextFollowUpAction]}: ${contact.fullName}`
+    : `Seguimiento: ${contact.fullName}`;
 
   if (existing) {
     // Only reopen a completed task if the date actually moved — editing
@@ -27,6 +30,7 @@ export async function syncFollowUpTask(contact: Contact) {
       data: {
         title,
         dueDate: contact.nextFollowUpAt,
+        actionType: contact.nextFollowUpAction,
         ...(dateChanged ? { completed: false, completedAt: null } : {}),
       },
     });
@@ -37,6 +41,7 @@ export async function syncFollowUpTask(contact: Contact) {
         contactId: contact.id,
         title,
         dueDate: contact.nextFollowUpAt,
+        actionType: contact.nextFollowUpAction,
         isFollowUp: true,
       },
     });

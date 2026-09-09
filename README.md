@@ -2,6 +2,8 @@
 
 Réplica de folk.app: pipeline de leads con drag & drop, paneles de clientes/partners/contactos, y una extensión de Chrome para guardar perfiles de LinkedIn.
 
+Desplegado en Vercel + Supabase.
+
 - App: Next.js 16 + Prisma + Postgres (Supabase) + Supabase Auth, pensada para desplegar en Vercel.
 - Extensión: `../folk-crm-extension` (Manifest V3, sin dependencias de build).
 

@@ -38,6 +38,7 @@ model Workspace {
   pipelineStages PipelineStage[]
   apiTokens     ApiToken[]
   sequences     Sequence[]
+  tasks         Task[]
 }
 
 // One row per Supabase auth user that belongs to a workspace.
@@ -99,9 +100,28 @@ model Contact {
   updatedAt DateTime @updatedAt
 
   sequenceEnrollments SequenceEnrollment[]
+  tasks               Task[]
 
   @@index([workspaceId, category])
   @@index([pipelineStageId])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contactId   String?
+  contact     Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  title       String
+  dueDate     DateTime?
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([workspaceId, completed])
+  @@index([contactId])
 }
 
 // A sequence is authored here (steps + personalized copy) and tracks who is

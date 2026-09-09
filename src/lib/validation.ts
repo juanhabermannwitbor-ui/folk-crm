@@ -86,6 +86,26 @@ export const updateEnrollmentSchema = z.object({
   currentStep: z.number().int().min(0).optional(),
 });
 
+const optionalDateString = z
+  .string()
+  .refine((v) => !Number.isNaN(Date.parse(v)), "Fecha inválida")
+  .optional()
+  .nullable()
+  .or(z.literal(""));
+
+export const createTaskSchema = z.object({
+  title: z.string().trim().min(1, "El título es obligatorio").max(300),
+  dueDate: optionalDateString,
+  contactId: z.string().cuid().optional().nullable(),
+});
+
+export const updateTaskSchema = z.object({
+  title: z.string().trim().min(1).max(300).optional(),
+  dueDate: optionalDateString,
+  contactId: z.string().cuid().optional().nullable(),
+  completed: z.boolean().optional(),
+});
+
 export const composeMessageSchema = z.object({
   channel: z.enum(["EMAIL", "LINKEDIN"]),
   goal: z.string().trim().min(3, "Contá qué querés lograr con el mensaje").max(500),

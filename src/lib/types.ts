@@ -82,3 +82,14 @@ export const ENROLLMENT_STATUS_LABELS: Record<EnrollmentStatus, string> = {
   STOPPED: "Detenido",
   COMPLETED: "Completado",
 };
+
+export type Task = {
+  id: string;
+  title: string;
+  dueDate: string | null;
+  completed: boolean;
+  completedAt: string | null;
+  contactId: string | null;
+  contact: Pick<Contact, "id" | "fullName" | "category"> | null;
+  createdAt: string;
+};

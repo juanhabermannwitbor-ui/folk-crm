@@ -9,6 +9,7 @@ import {
   Handshake,
   Users,
   Send,
+  CheckSquare,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -19,6 +20,7 @@ const NAV = [
   { href: "/partners", label: "Partners", icon: Handshake },
   { href: "/contacts", label: "Contactos", icon: Users },
   { href: "/sequences", label: "Secuencias", icon: Send },
+  { href: "/tasks", label: "Tareas", icon: CheckSquare },
 ];
 
 export function Sidebar({ workspaceName, email }: { workspaceName: string; email: string }) {

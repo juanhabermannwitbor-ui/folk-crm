@@ -27,6 +27,7 @@ export type Contact = {
   pipelineStage?: PipelineStage | null;
   stageOrder: number;
   dealValue: number | null;
+  nextFollowUpAt: string | null;
   createdAt: string;
   updatedAt: string;
 };

@@ -22,6 +22,12 @@ export const createContactSchema = z.object({
   tags: z.array(z.string().trim().max(40)).max(20).optional(),
   pipelineStageId: z.string().cuid().optional().nullable(),
   dealValue: z.number().int().nonnegative().optional().nullable(),
+  nextFollowUpAt: z
+    .string()
+    .refine((v) => !Number.isNaN(Date.parse(v)), "Fecha inválida")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
 });
 
 export const updateContactSchema = createContactSchema.partial().extend({

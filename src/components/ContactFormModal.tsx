@@ -26,6 +26,9 @@ export function ContactFormModal({ category, contact, stages, defaultStageId, on
   const [linkedinUrl, setLinkedinUrl] = useState(contact?.linkedinUrl ?? "");
   const [notes, setNotes] = useState(contact?.notes ?? "");
   const [dealValue, setDealValue] = useState(contact?.dealValue?.toString() ?? "");
+  const [nextFollowUpAt, setNextFollowUpAt] = useState(
+    contact?.nextFollowUpAt ? contact.nextFollowUpAt.slice(0, 10) : ""
+  );
   const [pipelineStageId, setPipelineStageId] = useState(
     contact?.pipelineStageId ?? defaultStageId ?? stages?.[0]?.id ?? ""
   );
@@ -49,6 +52,7 @@ export function ContactFormModal({ category, contact, stages, defaultStageId, on
       linkedinUrl: linkedinUrl || null,
       notes: notes || null,
       dealValue: dealValue ? Number(dealValue) : null,
+      nextFollowUpAt: nextFollowUpAt || null,
       ...(selectedCategory === "LEAD"
         ? { pipelineStageId: pipelineStageId || stages?.[0]?.id || null }
         : {}),
@@ -186,6 +190,15 @@ export function ContactFormModal({ category, contact, stages, defaultStageId, on
               </Field>
             </div>
           )}
+
+          <Field label="Próximo seguimiento">
+            <input
+              type="date"
+              value={nextFollowUpAt}
+              onChange={(e) => setNextFollowUpAt(e.target.value)}
+              className="input"
+            />
+          </Field>
 
           <Field label="Notas">
             <textarea

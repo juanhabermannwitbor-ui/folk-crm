@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
       tags: data.tags ?? [],
       pipelineStageId: data.category === "LEAD" ? data.pipelineStageId ?? null : null,
       dealValue: data.dealValue ?? null,
+      nextFollowUpAt: data.nextFollowUpAt ? new Date(data.nextFollowUpAt) : null,
       stageOrder,
     },
   });

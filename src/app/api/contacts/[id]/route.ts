@@ -45,6 +45,9 @@ export async function PATCH(
       ...(data.notes !== undefined ? { notes: data.notes || null } : {}),
       ...(data.tags !== undefined ? { tags: data.tags } : {}),
       ...(data.dealValue !== undefined ? { dealValue: data.dealValue } : {}),
+      ...(data.nextFollowUpAt !== undefined
+        ? { nextFollowUpAt: data.nextFollowUpAt ? new Date(data.nextFollowUpAt) : null }
+        : {}),
       ...(data.stageOrder !== undefined ? { stageOrder: data.stageOrder } : {}),
       ...(nextCategory !== "LEAD"
         ? { pipelineStageId: null }

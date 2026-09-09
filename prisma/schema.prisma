@@ -87,6 +87,7 @@ model Contact {
   avatarUrl   String?
   notes       String?
   tags        String[]        @default([])
+  nextFollowUpAt DateTime?
 
   // Only meaningful while category = LEAD
   pipelineStageId String?

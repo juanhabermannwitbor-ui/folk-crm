@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
@@ -51,7 +52,12 @@ export async function getOrCreateWorkspaceForUser(user: User) {
 // Convenience wrapper for Server Components / Route Handlers: resolves the
 // logged-in Supabase user and their workspace in one call, or null if
 // unauthenticated.
-export async function requireWorkspace() {
+//
+// Wrapped in React's cache() so that a single request only ever does this
+// once — without it, every layout and page on the way to a route calls
+// this independently, each paying for its own round trip to Supabase Auth
+// plus a workspace lookup, all to re-derive the exact same result.
+export const requireWorkspace = cache(async function requireWorkspace() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -61,4 +67,4 @@ export async function requireWorkspace() {
 
   const workspace = await getOrCreateWorkspaceForUser(user);
   return { user, workspace };
-}
+});

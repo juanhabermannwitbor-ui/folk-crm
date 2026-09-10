@@ -20,12 +20,31 @@ import {
   TOTAL_MAX,
   type DemandPriority,
 } from "@/lib/scoring";
+import {
+  getRecommendedAction,
+  type RecommendationLevel,
+  type SuggestedAction,
+} from "@/lib/recommendation";
 
 const PRIORITY_STYLES: Record<DemandPriority, string> = {
   LOW: "bg-neutral-100 text-neutral-600",
   MONITOR: "bg-sky-50 text-sky-700",
   HIGH: "bg-amber-50 text-amber-700",
   HOT: "bg-red-50 text-red-600",
+};
+
+const RECOMMENDATION_DOT: Record<RecommendationLevel, string> = {
+  ACT_NOW: "bg-red-500",
+  PREPARE_CONTACT: "bg-amber-500",
+  MONITOR: "bg-sky-500",
+  DO_NOT_PRIORITIZE: "bg-neutral-400",
+};
+
+const RECOMMENDATION_TEXT: Record<RecommendationLevel, string> = {
+  ACT_NOW: "text-red-600",
+  PREPARE_CONTACT: "text-amber-700",
+  MONITOR: "text-sky-700",
+  DO_NOT_PRIORITIZE: "text-neutral-600",
 };
 
 const CONFIDENCE_DOT: Record<SignalConfidence, string> = {
@@ -38,8 +57,8 @@ type ScoreField = "fitScore" | "companySignalScore" | "contactSignalScore" | "ti
 
 const DIMENSIONS: { field: ScoreField; label: string; scale: Record<number, string> }[] = [
   { field: "fitScore", label: "Fit", scale: FIT_SCALE_LABELS },
-  { field: "companySignalScore", label: "Company Signal", scale: COMPANY_SIGNAL_SCALE_LABELS },
-  { field: "contactSignalScore", label: "Contact Signal", scale: CONTACT_SIGNAL_SCALE_LABELS },
+  { field: "companySignalScore", label: "Señal de Empresa", scale: COMPANY_SIGNAL_SCALE_LABELS },
+  { field: "contactSignalScore", label: "Señal de Contacto", scale: CONTACT_SIGNAL_SCALE_LABELS },
   { field: "timingScore", label: "Timing", scale: TIMING_SCALE_LABELS },
 ];
 
@@ -55,9 +74,11 @@ function formatDate(dateStr: string) {
 export function DemandSignalPanel({
   contact,
   onContactUpdate,
+  onOpenCompose,
 }: {
   contact: Contact;
   onContactUpdate: (contact: Contact) => void;
+  onOpenCompose?: () => void;
 }) {
   const [scores, setScores] = useState<Record<ScoreField, number>>({
     fitScore: contact.fitScore,
@@ -74,6 +95,8 @@ export function DemandSignalPanel({
   const [showSignalForm, setShowSignalForm] = useState(false);
   const [editingSignalId, setEditingSignalId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [creatingTask, setCreatingTask] = useState(false);
+  const [taskFeedback, setTaskFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,6 +115,7 @@ export function DemandSignalPanel({
 
   const total = computeDemandSignalScore(scores);
   const priority = classifyDemandScore(total);
+  const recommendation = getRecommendedAction(scores);
   const mostRecentSignalDate = signals[0]?.detectedAt ?? null; // API sorts by detectedAt desc
   const suggestedTiming = suggestTimingScore(mostRecentSignalDate);
 
@@ -123,6 +147,28 @@ export function DemandSignalPanel({
   function handleNextBestActionChange(value: NextBestAction | "") {
     setNextBestAction(value);
     patchContact({ nextBestAction: value || null });
+  }
+
+  async function handleCreateTask() {
+    setCreatingTask(true);
+    setTaskFeedback(null);
+    const res = await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: `${recommendation.label}: ${contact.fullName}`,
+        dueDate: new Date().toISOString().slice(0, 10),
+        contactId: contact.id,
+      }),
+    });
+    setCreatingTask(false);
+    setTaskFeedback(res.ok ? "Tarea creada en Tareas." : "No se pudo crear la tarea.");
+  }
+
+  function handleSuggestedAction(action: SuggestedAction) {
+    if (action.kind === "SET_NEXT_BEST_ACTION") handleNextBestActionChange(action.value);
+    else if (action.kind === "CREATE_TASK") handleCreateTask();
+    else if (action.kind === "OPEN_COMPOSE") onOpenCompose?.();
   }
 
   async function handleDeleteSignal(signalId: string) {
@@ -192,9 +238,32 @@ export function DemandSignalPanel({
 
       {error && <p className="text-xs text-red-600">{error}</p>}
 
+      {/* ¿Qué hacer ahora? — recomendación automática (motor de reglas) */}
+      <div className="rounded-lg border border-neutral-200 p-3">
+        <p className="mb-2 text-xs font-semibold text-neutral-700">¿Qué hacer ahora?</p>
+        <div className="flex items-center gap-2">
+          <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${RECOMMENDATION_DOT[recommendation.level]}`} />
+          <span className={`text-sm font-semibold ${RECOMMENDATION_TEXT[recommendation.level]}`}>
+            {recommendation.label}
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-neutral-500">{recommendation.description}</p>
+
+        <p className="mt-3 text-xs font-semibold text-neutral-700">Por qué</p>
+        <p className="mt-1 text-xs text-neutral-600">{recommendation.reason}</p>
+        <p className="mt-2 text-[11px] font-medium text-neutral-400">Motivos principales</p>
+        <ul className="mt-1 space-y-0.5 text-[11px] text-neutral-500">
+          {DIMENSIONS.map((d) => (
+            <li key={d.field}>
+              {d.label}: {scores[d.field]}/5
+            </li>
+          ))}
+        </ul>
+      </div>
+
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs font-semibold text-neutral-700">Signals</p>
+          <p className="text-xs font-semibold text-neutral-700">Señales detectadas</p>
           <button
             type="button"
             onClick={() => {
@@ -259,8 +328,36 @@ export function DemandSignalPanel({
         )}
       </div>
 
+      {/* Próxima acción sugerida — botones de la recomendación automática */}
+      <div>
+        <p className="mb-2 text-xs font-semibold text-neutral-700">Próxima acción sugerida</p>
+        <div className="flex flex-wrap gap-2">
+          {recommendation.suggestedActions.map((action, i) =>
+            action.kind === "INFO" ? (
+              <span
+                key={i}
+                className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs text-neutral-500"
+              >
+                {action.label}
+              </span>
+            ) : (
+              <button
+                key={i}
+                type="button"
+                disabled={action.kind === "CREATE_TASK" && creatingTask}
+                onClick={() => handleSuggestedAction(action)}
+                className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 disabled:opacity-50"
+              >
+                {action.kind === "CREATE_TASK" && creatingTask ? "Creando..." : action.label}
+              </button>
+            )
+          )}
+        </div>
+        {taskFeedback && <p className="mt-1.5 text-[11px] text-neutral-400">{taskFeedback}</p>}
+      </div>
+
       <label className="block">
-        <span className="mb-1 block text-xs font-medium text-neutral-600">Why Now</span>
+        <span className="mb-1 block text-xs font-medium text-neutral-600">Por qué ahora</span>
         <textarea
           value={whyNow}
           onChange={(e) => setWhyNow(e.target.value)}
@@ -272,7 +369,7 @@ export function DemandSignalPanel({
       </label>
 
       <label className="block">
-        <span className="mb-1 block text-xs font-medium text-neutral-600">Next Best Action</span>
+        <span className="mb-1 block text-xs font-medium text-neutral-600">Próxima acción</span>
         <select
           value={nextBestAction}
           onChange={(e) => handleNextBestActionChange(e.target.value as NextBestAction | "")}

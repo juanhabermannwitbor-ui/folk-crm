@@ -36,10 +36,10 @@ export function classifyDemandScore(total: number): DemandPriority {
 }
 
 export const PRIORITY_LABELS: Record<DemandPriority, string> = {
-  LOW: "LOW",
-  MONITOR: "MONITOR",
-  HIGH: "HIGH",
-  HOT: "HOT",
+  LOW: "BAJA",
+  MONITOR: "MEDIA",
+  HIGH: "ALTA",
+  HOT: "MUY ALTA",
 };
 
 export const FIT_SCALE_LABELS: Record<number, string> = {

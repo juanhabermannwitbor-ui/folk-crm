@@ -296,6 +296,7 @@ export function ContactFormModal({
               key={contact.id}
               contact={contact}
               onContactUpdate={(updated) => onContactUpdate?.(updated)}
+              onOpenCompose={() => setShowAiModal(true)}
             />
           </div>
         )}

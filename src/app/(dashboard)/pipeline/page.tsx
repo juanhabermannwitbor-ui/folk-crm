@@ -13,7 +13,7 @@ export default async function PipelinePage() {
       orderBy: { order: "asc" },
     }),
     prisma.contact.findMany({
-      where: { workspaceId: ctx.workspace.id, category: "LEAD" },
+      where: { workspaceId: ctx.workspace.id, category: "LEAD", deletedAt: null },
       orderBy: { stageOrder: "asc" },
     }),
   ]);

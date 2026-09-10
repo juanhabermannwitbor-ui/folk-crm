@@ -101,6 +101,7 @@ export type Contact = {
   dealValue: number | null;
   nextFollowUpAt: string | null;
   nextFollowUpAction: FollowUpAction | null;
+  deletedAt: string | null;
   fitScore: number;
   companySignalScore: number;
   contactSignalScore: number;

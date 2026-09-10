@@ -39,8 +39,11 @@ export async function POST(request: NextRequest) {
 
   const data = parsed.data;
 
+  // Soft-deleted contacts are excluded from the dedupe match — re-saving a
+  // profile that was archived creates a fresh contact rather than silently
+  // reviving the old one.
   const existing = await prisma.contact.findFirst({
-    where: { workspaceId: workspace.id, linkedinUrl: data.linkedinUrl },
+    where: { workspaceId: workspace.id, linkedinUrl: data.linkedinUrl, deletedAt: null },
   });
 
   const contact = existing

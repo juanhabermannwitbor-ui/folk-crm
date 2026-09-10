@@ -9,7 +9,7 @@ export default async function PartnersPage() {
 
   const [contacts, stages] = await Promise.all([
     prisma.contact.findMany({
-      where: { workspaceId: ctx.workspace.id, category: "PARTNER" },
+      where: { workspaceId: ctx.workspace.id, category: "PARTNER", deletedAt: null },
       orderBy: { createdAt: "desc" },
     }),
     prisma.pipelineStage.findMany({ where: { workspaceId: ctx.workspace.id }, orderBy: { order: "asc" } }),

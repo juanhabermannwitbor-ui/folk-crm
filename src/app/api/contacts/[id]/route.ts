@@ -79,7 +79,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const ctx = await requireWorkspace();
@@ -89,6 +89,15 @@ export async function DELETE(
   const existing = await loadOwnedContact(ctx.workspace.id, id);
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await prisma.contact.delete({ where: { id } });
+  // Normal delete (from a contact list) archives instead of removing the
+  // row, so it can be restored from the Papelera in Ajustes. Only that
+  // trash view passes ?permanent=true, for an actual, unrecoverable delete.
+  const permanent = request.nextUrl.searchParams.get("permanent") === "true";
+  if (permanent) {
+    await prisma.contact.delete({ where: { id } });
+  } else {
+    await prisma.contact.update({ where: { id }, data: { deletedAt: new Date() } });
+  }
+
   return NextResponse.json({ ok: true });
 }

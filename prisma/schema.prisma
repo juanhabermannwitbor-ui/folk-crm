@@ -129,6 +129,12 @@ model Contact {
   nextFollowUpAt     DateTime?
   nextFollowUpAction FollowUpAction?
 
+  // Soft delete: set instead of a real row delete when a user removes a
+  // contact from a list, so it can be restored from the Papelera in
+  // Ajustes. Every normal query filters deletedAt: null; a real Prisma
+  // delete only happens from the "eliminar definitivamente" action there.
+  deletedAt DateTime?
+
   // Demand Signal Scoring — each dimension is 0-5, entered manually for now.
   // The total (max 20) is intentionally NOT stored: it's always derived from
   // these four fields so it can never drift out of sync with them.

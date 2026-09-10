@@ -14,7 +14,7 @@ export default async function TasksPage() {
       orderBy: [{ completed: "asc" }, { dueDate: "asc" }, { createdAt: "desc" }],
     }),
     prisma.contact.findMany({
-      where: { workspaceId: ctx.workspace.id },
+      where: { workspaceId: ctx.workspace.id, deletedAt: null },
       select: { id: true, fullName: true, category: true },
       orderBy: { fullName: "asc" },
     }),

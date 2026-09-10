@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check, Trash2, ArrowUp, ArrowDown, KeyRound } from "lucide-react";
-import type { PipelineStage } from "@/lib/types";
+import { Copy, Check, Trash2, ArrowUp, ArrowDown, KeyRound, RotateCcw } from "lucide-react";
+import type { ContactCategory, PipelineStage } from "@/lib/types";
+import { CATEGORY_LABELS } from "@/lib/types";
 
 type ApiTokenSummary = {
   id: string;
@@ -11,17 +12,28 @@ type ApiTokenSummary = {
   lastUsedAt: string | null;
 };
 
+type ArchivedContact = {
+  id: string;
+  fullName: string;
+  company: string | null;
+  category: ContactCategory;
+  deletedAt: string;
+};
+
 export function SettingsPanel({
   workspaceName,
   initialTokens,
   initialStages,
+  initialArchivedContacts,
 }: {
   workspaceName: string;
   initialTokens: ApiTokenSummary[];
   initialStages: PipelineStage[];
+  initialArchivedContacts: ArchivedContact[];
 }) {
   const [tokens, setTokens] = useState(initialTokens);
   const [stages, setStages] = useState(initialStages);
+  const [archivedContacts, setArchivedContacts] = useState(initialArchivedContacts);
   const [rawToken, setRawToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const appUrl =
@@ -62,6 +74,17 @@ export function SettingsPanel({
     if (!confirm("Los leads de esta fase quedarán sin fase asignada. ¿Continuar?")) return;
     const res = await fetch(`/api/stages/${id}`, { method: "DELETE" });
     if (res.ok) setStages((prev) => prev.filter((s) => s.id !== id));
+  }
+
+  async function restoreContact(id: string) {
+    const res = await fetch(`/api/contacts/${id}/restore`, { method: "POST" });
+    if (res.ok) setArchivedContacts((prev) => prev.filter((c) => c.id !== id));
+  }
+
+  async function deleteContactPermanently(id: string) {
+    if (!confirm("Esta acción no se puede deshacer. ¿Eliminar el contacto para siempre?")) return;
+    const res = await fetch(`/api/contacts/${id}?permanent=true`, { method: "DELETE" });
+    if (res.ok) setArchivedContacts((prev) => prev.filter((c) => c.id !== id));
   }
 
   async function moveStage(index: number, direction: -1 | 1) {
@@ -195,6 +218,48 @@ export function SettingsPanel({
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-sm font-semibold text-neutral-900">Papelera</h2>
+        <p className="mt-1 text-sm text-neutral-500">
+          Contactos eliminados desde las tablas. Podés restaurarlos o borrarlos para siempre.
+        </p>
+
+        {archivedContacts.length === 0 ? (
+          <p className="mt-3 text-sm text-neutral-400">No hay contactos archivados.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-neutral-100 rounded-xl border border-neutral-200 bg-white">
+            {archivedContacts.map((c) => (
+              <li key={c.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-neutral-800">{c.fullName}</p>
+                  <p className="truncate text-xs text-neutral-400">
+                    {CATEGORY_LABELS[c.category]}
+                    {c.company ? ` · ${c.company}` : ""} · eliminado el{" "}
+                    {new Date(c.deletedAt).toLocaleDateString("es-ES")}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    onClick={() => restoreContact(c.id)}
+                    title="Restaurar"
+                    className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium text-neutral-600 hover:bg-neutral-100"
+                  >
+                    <RotateCcw size={13} /> Restaurar
+                  </button>
+                  <button
+                    onClick={() => deleteContactPermanently(c.id)}
+                    title="Eliminar para siempre"
+                    className="rounded-md p-1.5 text-neutral-300 hover:bg-red-50 hover:text-red-500"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );

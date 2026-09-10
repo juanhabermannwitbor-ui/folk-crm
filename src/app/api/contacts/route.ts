@@ -14,7 +14,11 @@ export async function GET(request: NextRequest) {
     : undefined;
 
   const contacts = await prisma.contact.findMany({
-    where: { workspaceId: ctx.workspace.id, ...(category ? { category } : {}) },
+    where: {
+      workspaceId: ctx.workspace.id,
+      deletedAt: null,
+      ...(category ? { category } : {}),
+    },
     include: { pipelineStage: true },
     orderBy: [{ stageOrder: "asc" }, { createdAt: "desc" }],
   });

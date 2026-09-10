@@ -56,10 +56,10 @@ const CONFIDENCE_DOT: Record<SignalConfidence, string> = {
 type ScoreField = "fitScore" | "companySignalScore" | "contactSignalScore" | "timingScore";
 
 const DIMENSIONS: { field: ScoreField; label: string; scale: Record<number, string> }[] = [
-  { field: "fitScore", label: "Fit", scale: FIT_SCALE_LABELS },
+  { field: "fitScore", label: "Encaje", scale: FIT_SCALE_LABELS },
   { field: "companySignalScore", label: "Señal de Empresa", scale: COMPANY_SIGNAL_SCALE_LABELS },
   { field: "contactSignalScore", label: "Señal de Contacto", scale: CONTACT_SIGNAL_SCALE_LABELS },
-  { field: "timingScore", label: "Timing", scale: TIMING_SCALE_LABELS },
+  { field: "timingScore", label: "Momento", scale: TIMING_SCALE_LABELS },
 ];
 
 function formatDate(dateStr: string) {
@@ -195,7 +195,7 @@ export function DemandSignalPanel({
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-            Demand Signal Score
+            Puntaje de Señales de Demanda
           </p>
           <p className="text-2xl font-semibold text-neutral-900">
             {total} <span className="text-sm font-normal text-neutral-400">/ {TOTAL_MAX}</span>

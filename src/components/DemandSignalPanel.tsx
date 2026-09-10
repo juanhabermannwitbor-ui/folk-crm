@@ -12,9 +12,12 @@ import {
   classifyDemandScore,
   computeDemandSignalScore,
   COMPANY_SIGNAL_SCALE_LABELS,
+  COMPANY_SIGNAL_TYPES,
   CONTACT_SIGNAL_SCALE_LABELS,
+  CONTACT_SIGNAL_TYPES,
   FIT_SCALE_LABELS,
   PRIORITY_LABELS,
+  suggestSignalDimensionScore,
   suggestTimingScore,
   TIMING_SCALE_LABELS,
   TOTAL_MAX,
@@ -118,6 +121,28 @@ export function DemandSignalPanel({
   const recommendation = getRecommendedAction(scores);
   const mostRecentSignalDate = signals[0]?.detectedAt ?? null; // API sorts by detectedAt desc
   const suggestedTiming = suggestTimingScore(mostRecentSignalDate);
+  const suggestedCompanySignal = suggestSignalDimensionScore(signals, COMPANY_SIGNAL_TYPES);
+  const suggestedContactSignal = suggestSignalDimensionScore(signals, CONTACT_SIGNAL_TYPES);
+
+  const dimensionHints: Partial<Record<ScoreField, { value: number; text: string }>> = {};
+  if (suggestedTiming !== null) {
+    dimensionHints.timingScore = {
+      value: suggestedTiming,
+      text: `Sugerido según la señal más reciente: ${suggestedTiming} · usar`,
+    };
+  }
+  if (suggestedCompanySignal !== null) {
+    dimensionHints.companySignalScore = {
+      value: suggestedCompanySignal,
+      text: `Sugerido según las señales cargadas: ${suggestedCompanySignal} · usar`,
+    };
+  }
+  if (suggestedContactSignal !== null) {
+    dimensionHints.contactSignalScore = {
+      value: suggestedContactSignal,
+      text: `Sugerido según las señales cargadas: ${suggestedContactSignal} · usar`,
+    };
+  }
 
   async function patchContact(payload: Record<string, unknown>) {
     setError(null);
@@ -207,33 +232,34 @@ export function DemandSignalPanel({
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        {DIMENSIONS.map((d) => (
-          <label key={d.field} className="block">
-            <span className="mb-1 block text-xs font-medium text-neutral-600">{d.label}</span>
-            <select
-              value={scores[d.field]}
-              onChange={(e) => handleScoreChange(d.field, Number(e.target.value))}
-              className="input"
-            >
-              {Object.entries(d.scale).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            {d.field === "timingScore" &&
-              suggestedTiming !== null &&
-              suggestedTiming !== scores.timingScore && (
+        {DIMENSIONS.map((d) => {
+          const hint = dimensionHints[d.field];
+          return (
+            <label key={d.field} className="block">
+              <span className="mb-1 block text-xs font-medium text-neutral-600">{d.label}</span>
+              <select
+                value={scores[d.field]}
+                onChange={(e) => handleScoreChange(d.field, Number(e.target.value))}
+                className="input"
+              >
+                {Object.entries(d.scale).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              {hint && hint.value !== scores[d.field] && (
                 <button
                   type="button"
-                  onClick={() => handleScoreChange("timingScore", suggestedTiming)}
+                  onClick={() => handleScoreChange(d.field, hint.value)}
                   className="mt-1 text-left text-[11px] font-medium text-neutral-400 hover:text-neutral-700"
                 >
-                  Sugerido según la señal más reciente: {suggestedTiming} · usar
+                  {hint.text}
                 </button>
               )}
-          </label>
-        ))}
+            </label>
+          );
+        })}
       </div>
 
       {error && <p className="text-xs text-red-600">{error}</p>}

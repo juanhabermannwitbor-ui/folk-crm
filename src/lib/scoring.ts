@@ -2,6 +2,7 @@
 // separate from how a Signal gets created. Nothing here cares whether a
 // Signal was typed in by hand or produced later by an automated source;
 // it only reads the four score fields already on Contact.
+import type { SignalConfidence, SignalType } from "@/lib/types";
 
 export const SCORE_DIMENSIONS = [
   "fitScore",
@@ -95,5 +96,56 @@ export function suggestTimingScore(mostRecentDetectedAt: Date | string | null): 
   const detected = new Date(mostRecentDetectedAt);
   const daysAgo = Math.floor((Date.now() - detected.getTime()) / (1000 * 60 * 60 * 24));
   const window = TIMING_WINDOWS.find((w) => daysAgo <= w.maxDays);
+  return window ? window.score : 0;
+}
+
+// Which Signal types count as evidence for each of the two "señales
+// detectadas"-driven dimensions. LEADERSHIP is bucketed under contact (a
+// person taking on a new role) per the original examples given for each
+// dimension; NEWS/OTHER default to company since they're rarely about one
+// specific person.
+export const COMPANY_SIGNAL_TYPES: SignalType[] = [
+  "COMPANY",
+  "HIRING",
+  "TECHNOLOGY",
+  "GROWTH",
+  "FUNDING",
+  "EXPANSION",
+  "NEWS",
+];
+
+export const CONTACT_SIGNAL_TYPES: SignalType[] = ["CONTACT", "LEADERSHIP"];
+
+// Each señal contributes "points" toward its dimension's suggestion based on
+// how confident it is — more/stronger evidence pushes the suggested score
+// up. Kept as a small table (like TIMING_WINDOWS) so the weighting is easy
+// to retune later.
+const SIGNAL_STRENGTH_POINTS: Record<SignalConfidence, number> = {
+  HIGH: 2,
+  MEDIUM: 1,
+  LOW: 0.5,
+};
+
+const SIGNAL_STRENGTH_WINDOWS: { minPoints: number; score: number }[] = [
+  { minPoints: 5, score: 5 },
+  { minPoints: 3.5, score: 4 },
+  { minPoints: 2, score: 3 },
+  { minPoints: 1, score: 2 },
+  { minPoints: 0.01, score: 1 },
+  { minPoints: 0, score: 0 },
+];
+
+// Suggests a Company Signal / Contact Signal score from the señales
+// actually loaded for the contact, so cargar evidencia ahí tiene un efecto
+// visible en la priorización — sin pisar el valor manual: es una sugerencia
+// que el usuario aplica con un clic, igual que ya pasa con Timing.
+export function suggestSignalDimensionScore(
+  signals: { type: SignalType; confidence: SignalConfidence }[],
+  relevantTypes: SignalType[]
+): number | null {
+  const relevant = signals.filter((s) => relevantTypes.includes(s.type));
+  if (relevant.length === 0) return null;
+  const points = relevant.reduce((sum, s) => sum + SIGNAL_STRENGTH_POINTS[s.confidence], 0);
+  const window = SIGNAL_STRENGTH_WINDOWS.find((w) => points >= w.minPoints);
   return window ? window.score : 0;
 }

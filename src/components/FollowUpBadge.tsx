@@ -1,4 +1,4 @@
-import { Clock, Phone, Mail, MessageSquare, MessageCircle, type LucideIcon } from "lucide-react";
+import { Clock, Phone, Mail, MessageSquare, MessageCircle, Users, type LucideIcon } from "lucide-react";
 import type { FollowUpAction } from "@/lib/types";
 
 const ACTION_ICONS: Record<FollowUpAction, LucideIcon> = {
@@ -6,6 +6,7 @@ const ACTION_ICONS: Record<FollowUpAction, LucideIcon> = {
   EMAIL: Mail,
   LINKEDIN: MessageSquare,
   WHATSAPP: MessageCircle,
+  MEETING: Users,
 };
 
 export function formatFollowUpDate(dateStr: string | null) {

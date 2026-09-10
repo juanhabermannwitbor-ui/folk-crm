@@ -1,10 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, CalendarPlus } from "lucide-react";
 import type { Contact, FollowUpAction, Task } from "@/lib/types";
 import { CATEGORY_LABELS, FOLLOW_UP_ACTION_LABELS } from "@/lib/types";
 import { FollowUpBadge } from "@/components/FollowUpBadge";
+import { buildGoogleCalendarUrl } from "@/lib/googleCalendar";
+
+const DEFAULT_MEETING_TIME = "10:00";
 
 type ContactOption = Pick<Contact, "id" | "fullName" | "category">;
 
@@ -211,6 +214,22 @@ function TaskRow({
       </div>
       {!task.completed && (
         <FollowUpBadge dueDate={task.dueDate} actionType={task.actionType} />
+      )}
+      {!task.completed && task.actionType === "MEETING" && task.dueDate && (
+        <a
+          href={buildGoogleCalendarUrl({
+            title: task.title,
+            details: task.contact?.fullName,
+            date: task.dueDate.slice(0, 10),
+            time: DEFAULT_MEETING_TIME,
+          })}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Agendar en Google Calendar"
+          className="shrink-0 rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+        >
+          <CalendarPlus size={14} />
+        </a>
       )}
       <button
         onClick={() => onDelete(task.id)}

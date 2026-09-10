@@ -33,6 +33,7 @@ enum FollowUpAction {
   EMAIL
   LINKEDIN
   WHATSAPP
+  MEETING
 }
 
 model Workspace {

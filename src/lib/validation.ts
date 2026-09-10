@@ -7,7 +7,7 @@ export const contactCategorySchema = z.enum([
   "INTERESTING",
 ]);
 
-export const followUpActionSchema = z.enum(["CALL", "EMAIL", "LINKEDIN", "WHATSAPP"]);
+export const followUpActionSchema = z.enum(["CALL", "EMAIL", "LINKEDIN", "WHATSAPP", "MEETING"]);
 
 export const createContactSchema = z.object({
   fullName: z.string().trim().min(1, "Name is required").max(200),

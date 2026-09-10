@@ -1,12 +1,13 @@
 export type ContactCategory = "LEAD" | "CLIENT" | "PARTNER" | "INTERESTING";
 export type ContactSource = "MANUAL" | "LINKEDIN_EXTENSION" | "IMPORT";
-export type FollowUpAction = "CALL" | "EMAIL" | "LINKEDIN" | "WHATSAPP";
+export type FollowUpAction = "CALL" | "EMAIL" | "LINKEDIN" | "WHATSAPP" | "MEETING";
 
 export const FOLLOW_UP_ACTION_LABELS: Record<FollowUpAction, string> = {
   CALL: "Llamada",
   EMAIL: "Email",
   LINKEDIN: "Mensaje LinkedIn",
   WHATSAPP: "WhatsApp",
+  MEETING: "Reunión",
 };
 
 export type PipelineStage = {

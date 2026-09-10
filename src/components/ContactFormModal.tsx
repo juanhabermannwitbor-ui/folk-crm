@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Sparkles, X } from "lucide-react";
+import { CalendarPlus, Sparkles, X } from "lucide-react";
 import type { Contact, ContactCategory, FollowUpAction, PipelineStage } from "@/lib/types";
 import { CATEGORY_LABELS, FOLLOW_UP_ACTION_LABELS } from "@/lib/types";
 import { AiComposeModal } from "@/components/AiComposeModal";
+import { buildGoogleCalendarUrl } from "@/lib/googleCalendar";
 
 type Props = {
   category: ContactCategory;
@@ -32,6 +33,7 @@ export function ContactFormModal({ category, contact, stages, defaultStageId, on
   const [nextFollowUpAction, setNextFollowUpAction] = useState<FollowUpAction | "">(
     contact?.nextFollowUpAction ?? ""
   );
+  const [meetingTime, setMeetingTime] = useState("10:00");
   const [pipelineStageId, setPipelineStageId] = useState(
     contact?.pipelineStageId ?? defaultStageId ?? stages?.[0]?.id ?? ""
   );
@@ -220,6 +222,32 @@ export function ContactFormModal({ category, contact, stages, defaultStageId, on
               </select>
             </Field>
           </div>
+
+          {nextFollowUpAction === "MEETING" && nextFollowUpAt && (
+            <div className="flex items-end gap-3 rounded-lg bg-neutral-50 p-3">
+              <Field label="Hora">
+                <input
+                  type="time"
+                  value={meetingTime}
+                  onChange={(e) => setMeetingTime(e.target.value)}
+                  className="input"
+                />
+              </Field>
+              <a
+                href={buildGoogleCalendarUrl({
+                  title: `Reunión con ${fullName || "contacto"}`,
+                  details: [title, company].filter(Boolean).join(" · ") || undefined,
+                  date: nextFollowUpAt,
+                  time: meetingTime,
+                })}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mb-[1px] flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-100"
+              >
+                <CalendarPlus size={14} /> Agendar en Google Calendar
+              </a>
+            </div>
+          )}
 
           <Field label="Notas">
             <textarea

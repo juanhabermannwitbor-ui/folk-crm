@@ -94,6 +94,25 @@ export const extensionContactSchema = z.object({
   notes: z.string().trim().max(5000).optional(),
 });
 
+// Bulk import (CSV/XLSX) — deliberately looser than createContactSchema:
+// source spreadsheets are messy, and only fullName is actually required.
+// A malformed email/URL is kept as free text rather than rejecting the row.
+export const importContactRowSchema = z.object({
+  fullName: z.string().trim().min(1),
+  email: z.string().trim().max(200).optional().nullable(),
+  phone: z.string().trim().max(50).optional().nullable(),
+  company: z.string().trim().max(200).optional().nullable(),
+  title: z.string().trim().max(200).optional().nullable(),
+  location: z.string().trim().max(200).optional().nullable(),
+  linkedinUrl: z.string().trim().max(300).optional().nullable(),
+  notes: z.string().trim().max(2000).optional().nullable(),
+});
+
+export const importContactsSchema = z.object({
+  category: contactCategorySchema,
+  contacts: z.array(importContactRowSchema).min(1).max(500),
+});
+
 export const createStageSchema = z.object({
   name: z.string().trim().min(1).max(60),
   color: z

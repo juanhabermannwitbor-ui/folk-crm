@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Search, Trash2, ExternalLink } from "lucide-react";
+import { Plus, Search, Trash2, ExternalLink, Upload } from "lucide-react";
 import type { Contact, ContactCategory, PipelineStage } from "@/lib/types";
 import { ContactFormModal } from "@/components/ContactFormModal";
 import { FollowUpBadge } from "@/components/FollowUpBadge";
+import { ImportContactsModal } from "@/components/ImportContactsModal";
 
 export function ContactsTable({
   category,
@@ -23,6 +24,7 @@ export function ContactsTable({
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Contact | null>(null);
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -48,6 +50,10 @@ export function ContactsTable({
     setContacts((prev) => prev.map((c) => (c.id === contact.id ? contact : c)));
   }
 
+  function handleImported(imported: Contact[]) {
+    if (imported.length > 0) setContacts((prev) => [...imported, ...prev]);
+  }
+
   async function handleDelete(id: string) {
     if (!confirm("¿Eliminar este contacto?")) return;
     const res = await fetch(`/api/contacts/${id}`, { method: "DELETE" });
@@ -61,12 +67,20 @@ export function ContactsTable({
           <h1 className="text-lg font-semibold text-neutral-900">{title}</h1>
           <p className="text-sm text-neutral-500">{description}</p>
         </div>
-        <button
-          onClick={() => setCreating(true)}
-          className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-neutral-800"
-        >
-          <Plus size={15} /> Añadir
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setImporting(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3.5 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+          >
+            <Upload size={15} /> Importar
+          </button>
+          <button
+            onClick={() => setCreating(true)}
+            className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+          >
+            <Plus size={15} /> Añadir
+          </button>
+        </div>
       </header>
 
       <div className="border-b border-neutral-200 bg-white px-6 py-3">
@@ -171,6 +185,14 @@ export function ContactsTable({
           }}
           onSaved={handleSaved}
           onContactUpdate={handleContactUpdate}
+        />
+      )}
+
+      {importing && (
+        <ImportContactsModal
+          category={category}
+          onClose={() => setImporting(false)}
+          onImported={handleImported}
         />
       )}
     </div>

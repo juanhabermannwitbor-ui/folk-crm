@@ -171,6 +171,17 @@ export function PipelineBoard({
     setEditingContact(null);
   }
 
+  // From the Demand Signal panel — persists in place without closing the modal.
+  function handleContactUpdate(contact: Contact) {
+    setColumns((prev) => {
+      const next: ColumnsState = {};
+      for (const stageId of Object.keys(prev)) {
+        next[stageId] = prev[stageId].map((c) => (c.id === contact.id ? contact : c));
+      }
+      return next;
+    });
+  }
+
   async function handleAddStage() {
     const name = newStageName.trim();
     if (!name) return;
@@ -274,6 +285,7 @@ export function PipelineBoard({
           stages={stages}
           onClose={() => setEditingContact(null)}
           onSaved={handleEdited}
+          onContactUpdate={handleContactUpdate}
         />
       )}
     </div>

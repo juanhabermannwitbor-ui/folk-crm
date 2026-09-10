@@ -33,9 +33,54 @@ export const createContactSchema = z.object({
   nextFollowUpAction: followUpActionSchema.optional().nullable().or(z.literal("")),
 });
 
+const demandScoreDimension = z.number().int().min(0).max(5);
+
+export const nextBestActionSchema = z.enum([
+  "CONTACT",
+  "INVESTIGATE",
+  "CONNECT_LINKEDIN",
+  "SEND_MESSAGE",
+  "SCHEDULE_FOLLOWUP",
+  "WAIT",
+  "DO_NOT_CONTACT",
+]);
+
 export const updateContactSchema = createContactSchema.partial().extend({
   stageOrder: z.number().int().optional(),
+  fitScore: demandScoreDimension.optional(),
+  companySignalScore: demandScoreDimension.optional(),
+  contactSignalScore: demandScoreDimension.optional(),
+  timingScore: demandScoreDimension.optional(),
+  whyNow: z.string().trim().max(1000).optional().nullable().or(z.literal("")),
+  nextBestAction: nextBestActionSchema.optional().nullable().or(z.literal("")),
 });
+
+export const signalTypeSchema = z.enum([
+  "COMPANY",
+  "CONTACT",
+  "HIRING",
+  "TECHNOLOGY",
+  "GROWTH",
+  "FUNDING",
+  "EXPANSION",
+  "LEADERSHIP",
+  "NEWS",
+  "OTHER",
+]);
+
+export const signalConfidenceSchema = z.enum(["LOW", "MEDIUM", "HIGH"]);
+
+export const createSignalSchema = z.object({
+  type: signalTypeSchema,
+  description: z.string().trim().min(1, "La descripción es obligatoria").max(500),
+  source: z.string().trim().max(200).optional().nullable().or(z.literal("")),
+  confidence: signalConfidenceSchema.default("MEDIUM"),
+  detectedAt: z
+    .string()
+    .refine((v) => !Number.isNaN(Date.parse(v)), "Fecha inválida"),
+});
+
+export const updateSignalSchema = createSignalSchema.partial();
 
 export const extensionContactSchema = z.object({
   fullName: z.string().trim().min(1).max(200),

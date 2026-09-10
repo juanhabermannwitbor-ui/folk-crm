@@ -53,6 +53,18 @@ export async function PATCH(
         ? { nextFollowUpAction: data.nextFollowUpAction || null }
         : {}),
       ...(data.stageOrder !== undefined ? { stageOrder: data.stageOrder } : {}),
+      ...(data.fitScore !== undefined ? { fitScore: data.fitScore } : {}),
+      ...(data.companySignalScore !== undefined
+        ? { companySignalScore: data.companySignalScore }
+        : {}),
+      ...(data.contactSignalScore !== undefined
+        ? { contactSignalScore: data.contactSignalScore }
+        : {}),
+      ...(data.timingScore !== undefined ? { timingScore: data.timingScore } : {}),
+      ...(data.whyNow !== undefined ? { whyNow: data.whyNow || null } : {}),
+      ...(data.nextBestAction !== undefined
+        ? { nextBestAction: data.nextBestAction || null }
+        : {}),
       ...(nextCategory !== "LEAD"
         ? { pipelineStageId: null }
         : data.pipelineStageId !== undefined

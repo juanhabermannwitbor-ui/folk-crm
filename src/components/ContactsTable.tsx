@@ -41,7 +41,11 @@ export function ContactsTable({
       return exists ? prev.map((c) => (c.id === contact.id ? contact : c)) : [contact, ...prev];
     });
     setEditing(null);
-    setCreating(false);
+  }
+
+  // From the Demand Signal panel — persists in place without closing the modal.
+  function handleContactUpdate(contact: Contact) {
+    setContacts((prev) => prev.map((c) => (c.id === contact.id ? contact : c)));
   }
 
   async function handleDelete(id: string) {
@@ -166,6 +170,7 @@ export function ContactsTable({
             setEditing(null);
           }}
           onSaved={handleSaved}
+          onContactUpdate={handleContactUpdate}
         />
       )}
     </div>

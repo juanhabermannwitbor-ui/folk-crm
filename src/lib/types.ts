@@ -10,6 +10,69 @@ export const FOLLOW_UP_ACTION_LABELS: Record<FollowUpAction, string> = {
   MEETING: "Reunión",
 };
 
+export type SignalType =
+  | "COMPANY"
+  | "CONTACT"
+  | "HIRING"
+  | "TECHNOLOGY"
+  | "GROWTH"
+  | "FUNDING"
+  | "EXPANSION"
+  | "LEADERSHIP"
+  | "NEWS"
+  | "OTHER";
+
+export const SIGNAL_TYPE_LABELS: Record<SignalType, string> = {
+  COMPANY: "Empresa",
+  CONTACT: "Contacto",
+  HIRING: "Contratación",
+  TECHNOLOGY: "Tecnología",
+  GROWTH: "Crecimiento",
+  FUNDING: "Funding",
+  EXPANSION: "Expansión",
+  LEADERSHIP: "Cambio de liderazgo",
+  NEWS: "Noticia",
+  OTHER: "Otra",
+};
+
+export type SignalConfidence = "LOW" | "MEDIUM" | "HIGH";
+
+export const SIGNAL_CONFIDENCE_LABELS: Record<SignalConfidence, string> = {
+  LOW: "Baja",
+  MEDIUM: "Media",
+  HIGH: "Alta",
+};
+
+export type Signal = {
+  id: string;
+  contactId: string;
+  type: SignalType;
+  description: string;
+  source: string | null;
+  confidence: SignalConfidence;
+  detectedAt: string;
+  createdAt: string;
+};
+
+export type NextBestAction =
+  | "CONTACT"
+  | "INVESTIGATE"
+  | "CONNECT_LINKEDIN"
+  | "SEND_MESSAGE"
+  | "SCHEDULE_FOLLOWUP"
+  | "WAIT"
+  | "DO_NOT_CONTACT";
+
+export const NEXT_BEST_ACTION_LABELS: Record<NextBestAction, string> = {
+  CONTACT: "Contactar",
+  INVESTIGATE: "Investigar",
+  CONNECT_LINKEDIN: "Conectar en LinkedIn",
+  SEND_MESSAGE: "Enviar mensaje",
+  SCHEDULE_FOLLOWUP: "Agendar follow-up",
+  WAIT: "Esperar",
+  DO_NOT_CONTACT: "No contactar todavía",
+};
+
 export type PipelineStage = {
   id: string;
   name: string;
@@ -38,6 +101,12 @@ export type Contact = {
   dealValue: number | null;
   nextFollowUpAt: string | null;
   nextFollowUpAction: FollowUpAction | null;
+  fitScore: number;
+  companySignalScore: number;
+  contactSignalScore: number;
+  timingScore: number;
+  whyNow: string | null;
+  nextBestAction: NextBestAction | null;
   createdAt: string;
   updatedAt: string;
 };

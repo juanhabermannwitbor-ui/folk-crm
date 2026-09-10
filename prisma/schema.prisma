@@ -36,6 +36,35 @@ enum FollowUpAction {
   MEETING
 }
 
+enum SignalType {
+  COMPANY
+  CONTACT
+  HIRING
+  TECHNOLOGY
+  GROWTH
+  FUNDING
+  EXPANSION
+  LEADERSHIP
+  NEWS
+  OTHER
+}
+
+enum SignalConfidence {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum NextBestAction {
+  CONTACT
+  INVESTIGATE
+  CONNECT_LINKEDIN
+  SEND_MESSAGE
+  SCHEDULE_FOLLOWUP
+  WAIT
+  DO_NOT_CONTACT
+}
+
 model Workspace {
   id        String   @id @default(cuid())
   name      String
@@ -47,6 +76,7 @@ model Workspace {
   apiTokens     ApiToken[]
   sequences     Sequence[]
   tasks         Task[]
+  signals       Signal[]
 }
 
 // One row per Supabase auth user that belongs to a workspace.
@@ -99,6 +129,16 @@ model Contact {
   nextFollowUpAt     DateTime?
   nextFollowUpAction FollowUpAction?
 
+  // Demand Signal Scoring — each dimension is 0-5, entered manually for now.
+  // The total (max 20) is intentionally NOT stored: it's always derived from
+  // these four fields so it can never drift out of sync with them.
+  fitScore           Int             @default(0)
+  companySignalScore Int             @default(0)
+  contactSignalScore Int             @default(0)
+  timingScore        Int             @default(0)
+  whyNow             String?
+  nextBestAction     NextBestAction?
+
   // Only meaningful while category = LEAD
   pipelineStageId String?
   pipelineStage   PipelineStage? @relation(fields: [pipelineStageId], references: [id], onDelete: SetNull)
@@ -110,9 +150,37 @@ model Contact {
 
   sequenceEnrollments SequenceEnrollment[]
   tasks               Task[]
+  signals             Signal[]
 
   @@index([workspaceId, category])
   @@index([pipelineStageId])
+}
+
+// Evidence backing a contact's Demand Signal Score. Entered manually today,
+// but deliberately decoupled from the scoring fields on Contact: a future
+// integration (Apollo/Apify/AI) can create these same rows without touching
+// anything about how the score itself is computed or displayed.
+model Signal {
+  id          String   @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contactId   String
+  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  // Reserved for when a standalone Company model exists — company-level
+  // signals are attached via `contact` for now since that's the only place
+  // they're surfaced.
+  companyId   String?
+
+  type        SignalType
+  description String
+  source      String?
+  confidence  SignalConfidence @default(MEDIUM)
+  detectedAt  DateTime
+
+  createdAt DateTime @default(now())
+
+  @@index([workspaceId])
+  @@index([contactId])
 }
 
 model Task {

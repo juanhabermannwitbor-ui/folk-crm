@@ -6,6 +6,7 @@ import type { Contact, ContactCategory, FollowUpAction, PipelineStage } from "@/
 import { CATEGORY_LABELS, FOLLOW_UP_ACTION_LABELS } from "@/lib/types";
 import { AiComposeModal } from "@/components/AiComposeModal";
 import { buildGoogleCalendarUrl } from "@/lib/googleCalendar";
+import { DemandSignalPanel } from "@/components/DemandSignalPanel";
 
 type Props = {
   category: ContactCategory;
@@ -14,9 +15,20 @@ type Props = {
   defaultStageId?: string | null;
   onClose: () => void;
   onSaved: (contact: Contact) => void;
+  // Fired when the Demand Signal panel saves a score/signal change — unlike
+  // onSaved, it must NOT close the modal, since the user keeps editing.
+  onContactUpdate?: (contact: Contact) => void;
 };
 
-export function ContactFormModal({ category, contact, stages, defaultStageId, onClose, onSaved }: Props) {
+export function ContactFormModal({
+  category,
+  contact,
+  stages,
+  defaultStageId,
+  onClose,
+  onSaved,
+  onContactUpdate,
+}: Props) {
   const [selectedCategory, setSelectedCategory] = useState<ContactCategory>(category);
   const [fullName, setFullName] = useState(contact?.fullName ?? "");
   const [title, setTitle] = useState(contact?.title ?? "");
@@ -277,6 +289,16 @@ export function ContactFormModal({ category, contact, stages, defaultStageId, on
             </button>
           </div>
         </form>
+
+        {contact && (
+          <div className="mt-4">
+            <DemandSignalPanel
+              key={contact.id}
+              contact={contact}
+              onContactUpdate={(updated) => onContactUpdate?.(updated)}
+            />
+          </div>
+        )}
       </div>
 
       {showAiModal && contact && (

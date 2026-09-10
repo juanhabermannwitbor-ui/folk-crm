@@ -186,7 +186,7 @@ export function ContactsTable({
                     <td className="px-4 py-2.5 text-neutral-600">
                       <div className="flex items-center gap-2">
                         <span>{c.email || c.phone || "—"}</span>
-                        {c.linkedinUrl && (
+                        {c.linkedinUrl && /^https?:\/\//i.test(c.linkedinUrl) && (
                           <a
                             href={c.linkedinUrl}
                             target="_blank"

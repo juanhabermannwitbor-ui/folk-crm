@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireWorkspace } from "@/lib/workspace";
-import { importContactsSchema } from "@/lib/validation";
+import { importContactsSchema, sanitizeHttpUrl } from "@/lib/validation";
 
 // Bulk-creates contacts parsed client-side from a CSV/XLSX upload. Skips
 // rows without a name and rows whose email already exists in this
@@ -53,7 +53,10 @@ export async function POST(request: NextRequest) {
         company: row.company?.trim() || null,
         title: row.title?.trim() || null,
         location: row.location?.trim() || null,
-        linkedinUrl: row.linkedinUrl?.trim() || null,
+        // Silently dropped (not rejected) if it's not a real http(s) URL —
+        // e.g. a javascript: URI shouldn't get stored and later rendered
+        // as a clickable link. See sanitizeHttpUrl().
+        linkedinUrl: sanitizeHttpUrl(row.linkedinUrl),
         notes: row.notes?.trim() || null,
       },
     });

@@ -1,5 +1,28 @@
 import { z } from "zod";
 
+// Restricts a URL field to http(s) only. Without this, a bare z.url() also
+// accepts schemes like javascript:/data:, which would later render as a
+// clickable link (ContactsTable's LinkedIn icon) and execute on click.
+const httpUrlSchema = z
+  .string()
+  .trim()
+  .url()
+  .refine((v) => /^https?:\/\//i.test(v), "La URL debe empezar con http:// o https://");
+
+// Lenient counterpart for bulk import, where a bad cell should drop that
+// one value rather than reject the whole row (see importContactRowSchema).
+export function sanitizeHttpUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+  try {
+    new URL(trimmed);
+    return trimmed;
+  } catch {
+    return null;
+  }
+}
+
 export const contactCategorySchema = z.enum([
   "LEAD",
   "CLIENT",
@@ -18,8 +41,8 @@ export const createContactSchema = z.object({
   location: z.string().trim().max(200).optional().nullable(),
   email: z.string().trim().email().optional().nullable().or(z.literal("")),
   phone: z.string().trim().max(50).optional().nullable(),
-  linkedinUrl: z.string().trim().url().optional().nullable().or(z.literal("")),
-  avatarUrl: z.string().trim().url().optional().nullable().or(z.literal("")),
+  linkedinUrl: httpUrlSchema.optional().nullable().or(z.literal("")),
+  avatarUrl: httpUrlSchema.optional().nullable().or(z.literal("")),
   notes: z.string().trim().max(5000).optional().nullable(),
   tags: z.array(z.string().trim().max(40)).max(20).optional(),
   pipelineStageId: z.string().cuid().optional().nullable(),
@@ -88,8 +111,8 @@ export const extensionContactSchema = z.object({
   company: z.string().trim().max(200).optional(),
   title: z.string().trim().max(200).optional(),
   location: z.string().trim().max(200).optional(),
-  linkedinUrl: z.string().trim().url(),
-  avatarUrl: z.string().trim().url().optional(),
+  linkedinUrl: httpUrlSchema,
+  avatarUrl: httpUrlSchema.optional(),
   category: contactCategorySchema.optional(),
   notes: z.string().trim().max(5000).optional(),
 });

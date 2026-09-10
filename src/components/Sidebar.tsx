@@ -12,6 +12,7 @@ import {
   CheckSquare,
   Settings,
   LogOut,
+  ListChecks,
 } from "lucide-react";
 
 const NAV = [
@@ -19,6 +20,7 @@ const NAV = [
   { href: "/clients", label: "Clientes", icon: Building2 },
   { href: "/partners", label: "Partners", icon: Handshake },
   { href: "/contacts", label: "Contactos", icon: Users },
+  { href: "/lists", label: "Listas", icon: ListChecks },
   { href: "/sequences", label: "Secuencias", icon: Send },
   { href: "/tasks", label: "Tareas", icon: CheckSquare },
 ];

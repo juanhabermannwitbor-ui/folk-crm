@@ -113,6 +113,20 @@ export const importContactsSchema = z.object({
   contacts: z.array(importContactRowSchema).min(1).max(500),
 });
 
+export const createListSchema = z.object({
+  name: z.string().trim().min(1, "El nombre es obligatorio").max(120),
+});
+
+export const updateListSchema = createListSchema.partial();
+
+export const addListMembersSchema = z.object({
+  contactIds: z.array(z.string().cuid()).min(1).max(500),
+});
+
+export const bulkEnrollSchema = z.object({
+  contactIds: z.array(z.string().cuid()).min(1).max(500),
+});
+
 export const createStageSchema = z.object({
   name: z.string().trim().min(1).max(60),
   color: z

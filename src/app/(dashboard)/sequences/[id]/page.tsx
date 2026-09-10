@@ -22,7 +22,7 @@ export default async function SequenceDetailPage({
       },
     }),
     prisma.contact.findMany({
-      where: { workspaceId: ctx.workspace.id },
+      where: { workspaceId: ctx.workspace.id, deletedAt: null },
       orderBy: { fullName: "asc" },
     }),
   ]);

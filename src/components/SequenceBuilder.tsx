@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -11,8 +11,15 @@ import {
   UserPlus,
   Sparkles,
   X,
+  ListChecks,
 } from "lucide-react";
-import type { Contact, EnrollmentStatus, Sequence, SequenceStep } from "@/lib/types";
+import type {
+  Contact,
+  ContactListSummary,
+  EnrollmentStatus,
+  Sequence,
+  SequenceStep,
+} from "@/lib/types";
 import { ENROLLMENT_STATUS_LABELS } from "@/lib/types";
 import { AiComposeModal } from "@/components/AiComposeModal";
 
@@ -48,6 +55,18 @@ export function SequenceBuilder({
     initialSequence.enrollments[0]?.contactId ?? availableContacts[0]?.id ?? ""
   );
   const [showEnrollPicker, setShowEnrollPicker] = useState(false);
+  const [lists, setLists] = useState<ContactListSummary[] | null>(null);
+  const [enrollingListId, setEnrollingListId] = useState("");
+  const [bulkEnrolling, setBulkEnrolling] = useState(false);
+  const [bulkResult, setBulkResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (showEnrollPicker && lists === null) {
+      fetch("/api/lists")
+        .then((res) => res.json())
+        .then((body) => setLists(body.lists ?? []));
+    }
+  }, [showEnrollPicker, lists]);
 
   const previewContact = useMemo(
     () =>
@@ -109,6 +128,43 @@ export function SequenceBuilder({
     if (!res.ok) return;
     const { enrollment } = await res.json();
     setEnrollments((prev) => [enrollment, ...prev]);
+  }
+
+  async function enrollList() {
+    if (!enrollingListId) return;
+    setBulkEnrolling(true);
+    setBulkResult(null);
+
+    const listRes = await fetch(`/api/lists/${enrollingListId}`);
+    if (!listRes.ok) {
+      setBulkEnrolling(false);
+      setBulkResult("No se pudo leer la lista.");
+      return;
+    }
+    const { list } = await listRes.json();
+    const contactIds: string[] = list.members.map((c: Contact) => c.id);
+
+    if (contactIds.length === 0) {
+      setBulkEnrolling(false);
+      setBulkResult("Esa lista no tiene contactos.");
+      return;
+    }
+
+    const res = await fetch(`/api/sequences/${sequence.id}/enrollments/bulk`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contactIds }),
+    });
+    setBulkEnrolling(false);
+    if (!res.ok) {
+      setBulkResult("No se pudo inscribir la lista.");
+      return;
+    }
+    const data = await res.json();
+    setEnrollments((prev) => [...data.enrollments, ...prev]);
+    setBulkResult(
+      `Se inscribieron ${data.enrolledCount}${data.alreadyEnrolled > 0 ? ` (${data.alreadyEnrolled} ya estaban inscritos)` : ""}.`
+    );
   }
 
   async function updateEnrollment(
@@ -229,7 +285,33 @@ export function SequenceBuilder({
           </div>
 
           {showEnrollPicker && (
-            <div className="mb-3 rounded-lg border border-neutral-200 bg-white p-2">
+            <div className="mb-3 space-y-2 rounded-lg border border-neutral-200 bg-white p-2">
+              {lists && lists.length > 0 && (
+                <div className="flex items-center gap-1.5 border-b border-neutral-100 pb-2">
+                  <ListChecks size={13} className="shrink-0 text-neutral-400" />
+                  <select
+                    value={enrollingListId}
+                    onChange={(e) => setEnrollingListId(e.target.value)}
+                    className="flex-1 rounded-md border border-neutral-300 px-1.5 py-1 text-xs"
+                  >
+                    <option value="">— elegir lista —</option>
+                    {lists.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.name} ({l.memberCount})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={enrollList}
+                    disabled={!enrollingListId || bulkEnrolling}
+                    className="shrink-0 rounded-md bg-neutral-900 px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
+                  >
+                    {bulkEnrolling ? "..." : "Inscribir"}
+                  </button>
+                </div>
+              )}
+              {bulkResult && <p className="px-1 text-[11px] text-neutral-500">{bulkResult}</p>}
+
               {enrollableContacts.length === 0 ? (
                 <p className="p-2 text-xs text-neutral-400">
                   No hay más contactos disponibles para inscribir.

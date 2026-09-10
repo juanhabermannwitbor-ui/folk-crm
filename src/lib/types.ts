@@ -112,6 +112,20 @@ export type Contact = {
   updatedAt: string;
 };
 
+export type ContactListSummary = {
+  id: string;
+  name: string;
+  createdAt: string;
+  memberCount: number;
+};
+
+export type ContactListDetail = {
+  id: string;
+  name: string;
+  createdAt: string;
+  members: Contact[];
+};
+
 export const CATEGORY_LABELS: Record<ContactCategory, string> = {
   LEAD: "Lead",
   CLIENT: "Cliente",

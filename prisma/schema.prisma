@@ -78,6 +78,7 @@ model Workspace {
   tasks         Task[]
   signals       Signal[]
   contactAudits ContactAudit[]
+  contactLists  ContactList[]
 }
 
 // One row per Supabase auth user that belongs to a workspace.
@@ -158,9 +159,38 @@ model Contact {
   sequenceEnrollments SequenceEnrollment[]
   tasks               Task[]
   signals             Signal[]
+  listMemberships     ContactListMember[]
 
   @@index([workspaceId, category])
   @@index([pipelineStageId])
+}
+
+// A static, named group of contacts. Its only job today is letting the
+// user select "these N contacts" once and reuse that selection — mainly
+// to enroll all of them into a Sequence at once instead of one at a time.
+model ContactList {
+  id          String   @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  createdAt   DateTime @default(now())
+
+  members ContactListMember[]
+
+  @@index([workspaceId])
+}
+
+model ContactListMember {
+  id        String      @id @default(cuid())
+  listId    String
+  list      ContactList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  addedAt   DateTime    @default(now())
+
+  @@unique([listId, contactId])
+  @@index([listId])
+  @@index([contactId])
 }
 
 // Evidence backing a contact's Demand Signal Score. Entered manually today,

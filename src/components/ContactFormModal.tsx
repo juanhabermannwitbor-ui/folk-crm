@@ -29,7 +29,14 @@ export function ContactFormModal({
   onSaved,
   onContactUpdate,
 }: Props) {
-  const [selectedCategory, setSelectedCategory] = useState<ContactCategory>(category);
+  // ContactsTable always passes its own fixed page category as `category`,
+  // which only matches the contact's real category by coincidence (every
+  // contact shown on a given page already has that category). Seed from
+  // the contact itself when editing so this stays correct if that ever
+  // stops being true.
+  const [selectedCategory, setSelectedCategory] = useState<ContactCategory>(
+    contact?.category ?? category
+  );
   const [fullName, setFullName] = useState(contact?.fullName ?? "");
   const [title, setTitle] = useState(contact?.title ?? "");
   const [company, setCompany] = useState(contact?.company ?? "");

@@ -77,6 +77,7 @@ model Workspace {
   sequences     Sequence[]
   tasks         Task[]
   signals       Signal[]
+  contactAudits ContactAudit[]
 }
 
 // One row per Supabase auth user that belongs to a workspace.
@@ -184,6 +185,23 @@ model Signal {
   detectedAt  DateTime
 
   createdAt DateTime @default(now())
+
+  @@index([workspaceId])
+  @@index([contactId])
+}
+
+// Lightweight forensic trail — right now only wired up for Contact.category
+// changes via the normal edit route, after a contact's category changed
+// with no code path found to explain it. Not a general activity feed.
+model ContactAudit {
+  id          String   @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contactId   String
+  field       String
+  oldValue    String?
+  newValue    String?
+  createdAt   DateTime @default(now())
 
   @@index([workspaceId])
   @@index([contactId])

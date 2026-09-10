@@ -73,6 +73,18 @@ export async function PATCH(
     },
   });
 
+  if (data.category !== undefined && data.category !== existing.category) {
+    await prisma.contactAudit.create({
+      data: {
+        workspaceId: ctx.workspace.id,
+        contactId: id,
+        field: "category",
+        oldValue: existing.category,
+        newValue: data.category,
+      },
+    });
+  }
+
   await syncFollowUpTask(contact);
 
   return NextResponse.json({ contact });

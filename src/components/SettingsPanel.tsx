@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check, Trash2, ArrowUp, ArrowDown, KeyRound, RotateCcw, Radar } from "lucide-react";
+import { Copy, Check, Trash2, ArrowUp, ArrowDown, KeyRound, RotateCcw, Radar, Send } from "lucide-react";
 import type { ContactCategory, PipelineStage } from "@/lib/types";
 import { CATEGORY_LABELS } from "@/lib/types";
 
@@ -27,6 +27,15 @@ type HiringScanResult = {
   details: { company: string; jobsFound: number; signalsCreated: number }[];
 };
 
+type DispatchResult = {
+  dueToday: number;
+  dailyCap: number;
+  sent: number;
+  skippedNoEmail: number;
+  failed: number;
+  details: { contact: string; step: number; result: string }[];
+};
+
 export function SettingsPanel({
   workspaceName,
   initialTokens,
@@ -45,6 +54,8 @@ export function SettingsPanel({
   const [copied, setCopied] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<HiringScanResult | null>(null);
+  const [dispatching, setDispatching] = useState(false);
+  const [dispatchResult, setDispatchResult] = useState<DispatchResult | { error: string } | null>(null);
   const appUrl =
     typeof window !== "undefined" ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL;
 
@@ -103,6 +114,15 @@ export function SettingsPanel({
     setScanning(false);
     if (!res.ok) return;
     setScanResult(await res.json());
+  }
+
+  async function runSequenceDispatch() {
+    setDispatching(true);
+    setDispatchResult(null);
+    const res = await fetch("/api/sequences/dispatch", { method: "POST" });
+    const body = await res.json();
+    setDispatching(false);
+    setDispatchResult(res.ok ? body : { error: body.error ?? "No se pudo procesar el envío." });
   }
 
   async function moveStage(index: number, direction: -1 | 1) {
@@ -309,6 +329,51 @@ export function SettingsPanel({
                   {scanResult.details.map((d) => (
                     <li key={d.company}>
                       {d.company}: {d.jobsFound > 0 ? `${d.jobsFound} vacante(s) — ${d.signalsCreated} señal(es) nueva(s)` : "sin resultados"}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-sm font-semibold text-neutral-900">Secuencias — envío real</h2>
+        <p className="mt-1 text-sm text-neutral-500">
+          Manda el próximo paso a quien ya le toca en cualquier secuencia activa, vía Resend.
+          Sin cron: solo procesa cuando lo apretás. Requiere tener configurado{" "}
+          <code className="rounded bg-neutral-100 px-1 py-0.5 text-xs">RESEND_API_KEY</code> y{" "}
+          <code className="rounded bg-neutral-100 px-1 py-0.5 text-xs">SEQUENCES_FROM_EMAIL</code> en
+          el servidor.
+        </p>
+
+        <div className="mt-3 rounded-xl border border-neutral-200 bg-white p-4">
+          <button
+            onClick={runSequenceDispatch}
+            disabled={dispatching}
+            className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+          >
+            <Send size={15} /> {dispatching ? "Procesando..." : "Procesar envíos pendientes"}
+          </button>
+
+          {dispatchResult && "error" in dispatchResult && (
+            <p className="mt-3 text-sm text-red-600">{dispatchResult.error}</p>
+          )}
+
+          {dispatchResult && !("error" in dispatchResult) && (
+            <div className="mt-3 space-y-2 text-sm">
+              <p className="text-neutral-700">
+                Vencidos hoy <strong>{dispatchResult.dueToday}</strong> (tope diario{" "}
+                {dispatchResult.dailyCap}) · enviados <strong>{dispatchResult.sent}</strong> · sin
+                email <strong>{dispatchResult.skippedNoEmail}</strong> · con error{" "}
+                <strong>{dispatchResult.failed}</strong>
+              </p>
+              {dispatchResult.details.length > 0 && (
+                <ul className="space-y-1 text-xs text-neutral-500">
+                  {dispatchResult.details.map((d, i) => (
+                    <li key={i}>
+                      {d.contact} — paso {d.step + 1}: {d.result}
                     </li>
                   ))}
                 </ul>

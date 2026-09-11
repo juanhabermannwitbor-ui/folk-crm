@@ -261,9 +261,9 @@ model Task {
 }
 
 // A sequence is authored here (steps + personalized copy) and tracks who is
-// enrolled at which step. Actually *sending* the steps needs a verified
-// sending domain the workspace doesn't have yet, so enrollments just record
-// intended state for now — there is no scheduler dispatching emails.
+// enrolled at which step. Real sending goes through POST /api/sequences/dispatch
+// (manual trigger, no cron — see PROJECT_BLUEPRINT.md §18) via Resend, which
+// still needs a verified sending domain configured before it can work.
 model Sequence {
   id          String   @id @default(cuid())
   workspaceId String
@@ -292,14 +292,22 @@ model SequenceStep {
 }
 
 model SequenceEnrollment {
-  id          String           @id @default(cuid())
-  sequenceId  String
-  sequence    Sequence         @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
-  contactId   String
-  contact     Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  status      EnrollmentStatus @default(ACTIVE)
-  currentStep Int              @default(0)
-  enrolledAt  DateTime         @default(now())
+  id             String           @id @default(cuid())
+  sequenceId     String
+  sequence       Sequence         @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  contactId      String
+  contact        Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  status         EnrollmentStatus @default(ACTIVE)
+  currentStep    Int              @default(0)
+  enrolledAt     DateTime         @default(now())
+  // Cuándo se mandó el último paso — junto con SequenceStep.delayDays, define
+  // cuándo vence el próximo. Antes del primer envío, la base es enrolledAt.
+  lastStepSentAt DateTime?
+  // Id del último mensaje de Resend mandado para esta inscripción — permite
+  // al webhook de Resend (rebote/queja) encontrar qué inscripción pausar,
+  // sin necesitar una tabla de historial de envíos aparte.
+  lastMessageId  String?          @unique
+  stopReason     String?
 
   @@unique([sequenceId, contactId])
   @@index([contactId])

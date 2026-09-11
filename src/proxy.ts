@@ -37,6 +37,8 @@ export async function proxy(request: NextRequest) {
   // API routes authenticate themselves per-request (see requireWorkspace) and
   // must answer with JSON, not an HTML redirect — a fetch() caller can't
   // follow a redirect into a login page and parse it as a 401 response.
+  // (api/extension and api/webhooks never reach this point at all — see the
+  // matcher below, they have their own non-cookie auth.)
   if (pathname.startsWith("/api/")) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     return response;
@@ -60,6 +62,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/extension|.*\\.(?:svg|png|jpg|jpeg|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/extension|api/webhooks|.*\\.(?:svg|png|jpg|jpeg|webp)$).*)",
   ],
 };

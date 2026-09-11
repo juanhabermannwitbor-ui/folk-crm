@@ -22,23 +22,7 @@ import type {
 } from "@/lib/types";
 import { ENROLLMENT_STATUS_LABELS } from "@/lib/types";
 import { AiComposeModal } from "@/components/AiComposeModal";
-
-const MERGE_TOKENS: { token: string; label: string; get: (c: Contact) => string }[] = [
-  { token: "{{nombre}}", label: "Nombre", get: (c) => c.fullName.split(" ")[0] || c.fullName },
-  { token: "{{nombre_completo}}", label: "Nombre completo", get: (c) => c.fullName },
-  { token: "{{empresa}}", label: "Empresa", get: (c) => c.company || "" },
-  { token: "{{cargo}}", label: "Cargo", get: (c) => c.title || "" },
-  { token: "{{ubicacion}}", label: "Ubicación", get: (c) => c.location || "" },
-];
-
-function renderTemplate(template: string, contact: Contact | null) {
-  if (!contact) return template;
-  let result = template;
-  for (const { token, get } of MERGE_TOKENS) {
-    result = result.split(token).join(get(contact) || `(${token} sin dato)`);
-  }
-  return result;
-}
+import { SEQUENCE_MERGE_TOKENS as MERGE_TOKENS, renderSequenceTemplate as renderTemplate } from "@/lib/sequenceTemplate";
 
 export function SequenceBuilder({
   initialSequence,

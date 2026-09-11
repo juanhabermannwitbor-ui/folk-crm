@@ -1028,3 +1028,19 @@ Cambios hechos después de la fecha de generación de este Blueprint, siguiendo 
 **Límite de escala reconocido:** tope de 25 empresas por corrida, con timeout de 4s por llamada externa — suficiente para este workspace (5 empresas reales hoy), pero si el volumen creciera mucho esto necesitaría moverse a un job en segundo plano, deliberadamente fuera de alcance (ver la restricción de "no cron/background jobs" ya documentada para Demand Signal Scoring V1, que sigue aplicando acá).
 
 **Verificación realizada:** (1) prueba real contra las APIs públicas: "Stripe" devolvió 628 vacantes reales y vigentes vía Greenhouse; "Notion" y "Grupo Gonher" no matchearon (resultado esperado, no un fallo). (2) prueba end-to-end contra la base de datos real: contacto de prueba con `company: "Stripe"` → el escaneo creó señales `HIRING` reales con la evidencia correcta (título + URL de la vacante) → una segunda corrida no creó duplicados → limpieza completa de los datos de prueba.
+
+### 2026-09-11 — Fix adicional: `looksLikeLocation()` no reconocía ubicaciones sin coma
+
+**Contexto:** al validar el punto 2 (parseo de headline) en uso real, el usuario encontró que **Ubicación** también salía vacía en un perfil argentino — un gap preexistente, no introducido por los cambios de este día, que salió a la luz recién al probar con un perfil real de LinkedIn con la ubicación en formato "Ciudad y alrededores".
+
+**Decisión:** `looksLikeLocation()` en `content.js` ahora también reconoce una línea que termina en "y alrededores" / "y los alrededores" (UI de LinkedIn en español) o en "Area" (UI en inglés — "Greater Seattle Area", "San Francisco Bay Area"), además del formato original con coma ("Ciudad, Provincia, País").
+
+**Motivo:** LinkedIn no siempre expresa la ubicación como lista separada por comas — para un área metropolitana usa esta forma sin comas, que el heurístico original no contemplaba.
+
+**Trade-off:** el nuevo patrón para "Area" es case-insensitive y solo exige que la línea *termine* en esa palabra — hay un riesgo remoto de falso positivo si alguna otra línea del top card terminara casualmente en "area"/"alrededores" sin ser una ubicación; se acepta ese riesgo porque la búsqueda ya está acotada a las 5 líneas posteriores al headline, no a la página entera.
+
+**Aplicabilidad futura:** cualquier heurística de "parece un X" basada en un solo patrón (acá, comas) debería revisarse contra variantes reales del dato en más de un idioma/región antes de darla por completa — un heurístico probado solo con perfiles en inglés/EE.UU. no necesariamente generaliza a otras regiones del mismo sitio.
+
+**Incidente relacionado (sin relación con el código):** durante esta misma verificación, el usuario vio un error real de Chrome — `"Uncaught Error: Extension context invalidated"` — en una pestaña de LinkedIn que ya estaba abierta antes de recargar la extensión. Es un comportamiento estándar de Chrome (una pestaña abierta sigue corriendo la versión vieja del content script tras un reload de la extensión, y esa versión vieja no puede volver a hablar con la extensión) — se resuelve con un refresh real de la pestaña (F5), no es un bug de este proyecto. El botón "Errores" que quedó visible en `chrome://extensions` después de eso es solo un historial de Chrome — no indica que algo siga roto, y se limpia a mano con "Borrar todo".
+
+**Verificación realizada:** script de Node aislado con 9 casos (incluyendo "Buenos Aires y alrededores", "Greater Seattle Area", el formato con coma que ya funcionaba, y varios negativos) — los 9 dieron el resultado esperado. Confirmado además en uso real por el usuario, sobre un perfil real de LinkedIn, tras un refresh correcto de la pestaña.

@@ -136,6 +136,12 @@ export const importContactsSchema = z.object({
   contacts: z.array(importContactRowSchema).min(1).max(500),
 });
 
+// Importar a una lista no fija una categoría — cada fila puede matchear un
+// contacto existente (por email) o crear uno nuevo como INTERESTING.
+export const listImportSchema = z.object({
+  contacts: z.array(importContactRowSchema).min(1).max(500),
+});
+
 export const createListSchema = z.object({
   name: z.string().trim().min(1, "El nombre es obligatorio").max(120),
 });

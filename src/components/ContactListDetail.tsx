@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Trash2, Search, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Search, X, Upload, Download } from "lucide-react";
 import type { Contact, ContactListDetail as ContactListDetailType } from "@/lib/types";
 import { CATEGORY_LABELS } from "@/lib/types";
+import { ImportContactsModal } from "@/components/ImportContactsModal";
+import { exportContactsToFile } from "@/lib/importContacts";
 
 export function ContactListDetail({
   initialList,
@@ -16,6 +18,9 @@ export function ContactListDetail({
   const router = useRouter();
   const [list, setList] = useState(initialList);
   const [showPicker, setShowPicker] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const candidateContacts = useMemo(() => {
     const memberIds = new Set(list.members.map((c) => c.id));
@@ -48,6 +53,23 @@ export function ContactListDetail({
     await fetch(`/api/lists/${list.id}/members/${contactId}`, { method: "DELETE" });
   }
 
+  function handleImported(imported: Contact[]) {
+    if (imported.length === 0) return;
+    setList((prev) => {
+      const existingIds = new Set(prev.members.map((c) => c.id));
+      const newOnes = imported.filter((c) => !existingIds.has(c.id));
+      return { ...prev, members: [...newOnes, ...prev.members] };
+    });
+  }
+
+  async function handleExport(format: "csv" | "xlsx") {
+    setShowExportMenu(false);
+    setExporting(true);
+    const slug = list.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    await exportContactsToFile(list.members, format, `lista-${slug || "contactos"}`);
+    setExporting(false);
+  }
+
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-3 border-b border-neutral-200 bg-white px-6 py-4">
@@ -62,12 +84,50 @@ export function ContactListDetail({
           onBlur={(e) => e.target.value.trim() && renameList(e.target.value.trim())}
           className="flex-1 rounded-md border border-transparent px-1.5 py-1 text-lg font-semibold text-neutral-900 hover:border-neutral-200 focus:border-neutral-400 focus:outline-none"
         />
-        <button
-          onClick={() => setShowPicker(true)}
-          className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-neutral-800"
-        >
-          <Plus size={15} /> Agregar contactos
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowImport(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+          >
+            <Upload size={15} /> Importar
+          </button>
+
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu((v) => !v)}
+              disabled={list.members.length === 0 || exporting}
+              className="flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+            >
+              <Download size={15} /> {exporting ? "Exportando..." : "Exportar"}
+            </button>
+            {showExportMenu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowExportMenu(false)} />
+                <div className="absolute right-0 z-20 mt-1 w-40 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
+                  <button
+                    onClick={() => handleExport("csv")}
+                    className="block w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+                  >
+                    Como CSV
+                  </button>
+                  <button
+                    onClick={() => handleExport("xlsx")}
+                    className="block w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+                  >
+                    Como Excel (.xlsx)
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <button
+            onClick={() => setShowPicker(true)}
+            className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+          >
+            <Plus size={15} /> Agregar contactos
+          </button>
+        </div>
       </header>
 
       <div className="flex-1 overflow-auto p-6">
@@ -124,6 +184,14 @@ export function ContactListDetail({
           candidates={candidateContacts}
           onCancel={() => setShowPicker(false)}
           onConfirm={addContacts}
+        />
+      )}
+
+      {showImport && (
+        <ImportContactsModal
+          listId={list.id}
+          onClose={() => setShowImport(false)}
+          onImported={handleImported}
         />
       )}
     </div>

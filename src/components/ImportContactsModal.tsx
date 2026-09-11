@@ -17,16 +17,25 @@ type Step = "select" | "map" | "result";
 type ImportResult = {
   contacts: Contact[];
   createdCount: number;
-  skippedDuplicate: number;
   skippedInvalid: number;
+  // Modo "categoría" (/api/contacts/import):
+  skippedDuplicate?: number;
+  // Modo "lista" (/api/lists/[id]/import):
+  matchedCount?: number;
+  addedToList?: number;
 };
 
 export function ImportContactsModal({
   category,
+  listId,
   onClose,
   onImported,
 }: {
-  category: ContactCategory;
+  // Uno de los dos, según desde dónde se abra el modal: category importa a
+  // una de las tablas (Clientes/Partners/Contactos); listId importa directo
+  // a una Lista, matcheando por email en vez de crear siempre.
+  category?: ContactCategory;
+  listId?: string;
   onClose: () => void;
   onImported: (contacts: Contact[]) => void;
 }) {
@@ -86,10 +95,10 @@ export function ImportContactsModal({
       };
     });
 
-    const res = await fetch("/api/contacts/import", {
+    const res = await fetch(listId ? `/api/lists/${listId}/import` : "/api/contacts/import", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category, contacts }),
+      body: JSON.stringify(listId ? { contacts } : { category, contacts }),
     });
     setImporting(false);
     if (!res.ok) {
@@ -187,9 +196,21 @@ export function ImportContactsModal({
         {step === "result" && result && (
           <div className="space-y-2">
             <p className="text-sm text-neutral-700">
-              Se crearon <strong>{result.createdCount}</strong> contactos.
+              Se crearon <strong>{result.createdCount}</strong> contactos
+              {result.matchedCount !== undefined && (
+                <>
+                  {" "}
+                  y se reutilizaron <strong>{result.matchedCount}</strong> ya existentes (mismo email)
+                </>
+              )}
+              .
             </p>
-            {result.skippedDuplicate > 0 && (
+            {result.addedToList !== undefined && (
+              <p className="text-xs text-neutral-500">
+                {result.addedToList} agregados a la lista.
+              </p>
+            )}
+            {!!result.skippedDuplicate && result.skippedDuplicate > 0 && (
               <p className="text-xs text-neutral-500">
                 {result.skippedDuplicate} se saltearon por ya existir (mismo email).
               </p>

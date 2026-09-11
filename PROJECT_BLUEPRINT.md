@@ -180,9 +180,9 @@ No existe un backend separado: las API Routes de Next.js **son** el backend. No 
 
 **Riesgos/limitaciones conocidos** (ver también §17):
 - Los tokens de la extensión no tienen expiración ni scopes — un token es válido para todo el workspace hasta que se revoca a mano.
-- `host_permissions` de la extensión es más amplio de lo necesario (`https://*/*`) — identificado, no corregido todavía.
+- ~~`host_permissions` de la extensión es más amplio de lo necesario (`https://*/*`)~~ — acotado el 2026-09-11 a LinkedIn + la URL real de producción + localhost (ver §18).
 - No hay rate limiting propio en ningún endpoint (se apoya en que el espacio de tokens es de 192 bits, impracticable de fuerza bruta).
-- No hay CSP configurado.
+- ~~No hay CSP configurado.~~ — agregada el 2026-09-11, solo en producción (ver §18).
 
 ### Arquitectura de datos
 
@@ -806,12 +806,13 @@ Reusable principle: cualquier campo que termine en un `href`/`src` debe validars
 | Papelera (soft-delete) | DONE | |
 | Importación CSV/XLSX | DONE | tope de 500 filas por archivo |
 | Listas de contactos + inscripción masiva | DONE | |
+| Import/export CSV/XLSX en Listas | DONE | desde 2026-09-11 — import matchea por email en todo el workspace; export usa las mismas columnas de la plantilla — ver §18 |
 | Registro de auditoría de categoría | DONE | mitigación, no fix de causa raíz |
 | Modelo `Company` | TODO | evaluado, decidido posponer |
 | Enrichment (Apollo/Apify/etc.) | TODO | arquitectura discutida, cero código |
 | Detección automática de señales (HIRING) | PARTIAL (piloto) | Greenhouse/Lever, manual, mejor esfuerzo — ver §18. Otros tipos de señal siguen TODO |
 | IA para scoring/recomendación | TODO | descartado deliberadamente para V1 |
-| CSP headers | TODO | |
+| CSP headers | DONE | solo en producción, `'unsafe-inline'` para script/style — ver §18 |
 | `host_permissions` de la extensión acotados | DONE | corregido 2026-09-11 — ver §18 |
 | Multi-seat / invitaciones a un workspace | TODO | el modelo de datos ya lo soportaría |
 
@@ -829,7 +830,8 @@ Mejoras chicas y evidentes a partir del estado actual:
 - ~~Capturar `title`/`company` reales desde LinkedIn en el content script~~ — hecho el 2026-09-11 (heurístico, ver §18).
 - ~~Acotar `host_permissions` de la extensión a la URL real de producción + localhost~~ — hecho el 2026-09-11 (ver §18).
 - Remover `SUPABASE_SERVICE_ROLE_KEY` de `.env.example`/Vercel si sigue sin usarse.
-- Agregar una CSP básica.
+- ~~Agregar una CSP básica.~~ — hecho el 2026-09-11 (ver §18).
+- ~~Import/export CSV/XLSX en Listas.~~ — hecho el 2026-09-11 (ver §18).
 - Reconciliar `stageOrder` de todas las tarjetas de una columna al soltar un drag (hoy solo se persiste la tarjeta arrastrada).
 
 ### V2 — Product evolution
@@ -953,7 +955,7 @@ Ahora contame: [DESCRIBÍ ACÁ TU NUEVO PROYECTO].
 - `host_permissions` de la extensión más amplio de lo necesario — **corregido el 2026-09-11** (ver §18).
 - `SUPABASE_SERVICE_ROLE_KEY` declarada en `.env.example` pero sin ningún uso en el código — revisar si está cargada en Vercel y removerla si no se usa.
 - Una dependencia de las herramientas de Prisma (`deepmerge-ts`, vía `@prisma/config`) tiene un CVE alto — solo afecta al tooling de desarrollo/build, no al runtime desplegado.
-- Sin CSP configurado — no urgente para una herramienta interna de pocos usuarios.
+- Sin CSP configurado — **agregada el 2026-09-11**, solo en producción (ver §18).
 
 **Recomendación para convertir la sección "Reusable Engineering Knowledge" en una Skill de Claude Code:**
 - Los 6 patrones reutilizables de §10 (excluyendo el de Provider Abstraction, que es solo diseño) son buenos candidatos a convertirse en una skill de "arquitectura de MVP interno" — cada uno con su propio checklist de cuándo aplica.
@@ -1044,3 +1046,37 @@ Cambios hechos después de la fecha de generación de este Blueprint, siguiendo 
 **Incidente relacionado (sin relación con el código):** durante esta misma verificación, el usuario vio un error real de Chrome — `"Uncaught Error: Extension context invalidated"` — en una pestaña de LinkedIn que ya estaba abierta antes de recargar la extensión. Es un comportamiento estándar de Chrome (una pestaña abierta sigue corriendo la versión vieja del content script tras un reload de la extensión, y esa versión vieja no puede volver a hablar con la extensión) — se resuelve con un refresh real de la pestaña (F5), no es un bug de este proyecto. El botón "Errores" que quedó visible en `chrome://extensions` después de eso es solo un historial de Chrome — no indica que algo siga roto, y se limpia a mano con "Borrar todo".
 
 **Verificación realizada:** script de Node aislado con 9 casos (incluyendo "Buenos Aires y alrededores", "Greater Seattle Area", el formato con coma que ya funcionaba, y varios negativos) — los 9 dieron el resultado esperado. Confirmado además en uso real por el usuario, sobre un perfil real de LinkedIn, tras un refresh correcto de la pestaña.
+
+### 2026-09-11 — CSP básica en `next.config.ts`
+
+**Decisión:** cabeceras de seguridad (`Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`) agregadas vía `headers()` de Next.js, aplicadas a todas las rutas **solo cuando `NODE_ENV === "production"`**. La CSP usa `'unsafe-inline'` en `script-src`/`style-src`, no nonces.
+
+**Motivo:** hallazgo pendiente de la auditoría de seguridad de esta sesión (§17) — la app no tenía ninguna cabecera de seguridad configurada.
+
+**Alternativas consideradas:**
+- CSP estricta basada en nonces (sin `'unsafe-inline'`): requeriría generar un nonce por request en middleware y propagarlo a cada `<script>` que renderiza el App Router (incluida la hidratación interna de Next.js) — no se pudo validar contra una sesión real logueada en este entorno, así que se decidió no implementarla a ciegas.
+- Aplicar la CSP también en desarrollo: descartado — el HMR de Turbopack (`next dev`) depende de `eval()`, que cualquier `script-src` sin `'unsafe-eval'` rompe.
+
+**Trade-off:** `'unsafe-inline'` reduce buena parte del valor de una CSP contra XSS (el vector más común, inyectar un `<script>` inline, sigue permitido). Es un primer paso pragmático — bloquea `object-src`, `frame-ancestors` y fija `frame-ancestors 'none'`/`X-Frame-Options: DENY` (clickjacking) y `nosniff`, pero no es una CSP "dura".
+
+**Aplicabilidad futura:** para endurecerla a nonces en un proyecto futuro, hay que decidir el enfoque *antes* de escribir código — nonces exigen middleware + testing con sesión real, no es una mejora incremental trivial. Gatear cualquier cabecera de seguridad a `NODE_ENV === "production"` es un patrón reutilizable siempre que la herramienta de desarrollo local (HMR, dev tools) dependa de algo que la política de producción bloquearía.
+
+**Verificación realizada:** build de producción local (`next build && next start`) + `curl -I` contra `http://localhost:3000` confirmando las 4 cabeceras presentes; confirmado por separado que `next dev` no las envía (build de desarrollo sin cabeceras, sin romper HMR). No se pudo probar la CSP contra una sesión logueada real (requiere credenciales que Claude no tiene) — validado solo a nivel de cabeceras HTTP, no de comportamiento del navegador con una sesión activa.
+
+### 2026-09-11 — Import/export CSV/XLSX en Listas de contactos
+
+**Decisión:** `ImportContactsModal` generalizado para aceptar `listId` además de `category`; nuevo endpoint `POST /api/lists/[id]/import` que, a diferencia de `/api/contacts/import`, matchea cada fila por email **en todo el workspace** (sin importar la categoría del contacto existente) y solo crea un contacto nuevo (categoría `INTERESTING`) si no hay match — en ambos casos, el contacto termina como miembro de la lista. Export nuevo (`exportContactsToFile` en `src/lib/importContacts.ts`) genera el archivo 100% en el navegador con las mismas columnas de la plantilla de import, para que sea round-trip.
+
+**Motivo:** pedido explícito del usuario — poder importar/exportar los contactos de una Lista por CSV/XLSX.
+
+**Por qué el import de Lista matchea distinto al de categoría:** una Lista no pertenece a una categoría (agrupa contactos de Clientes/Partners/Contactos por igual), así que "ya existe este email" tiene que buscarse en todo el workspace, no en una sola tabla — si se reusara la lógica de `/api/contacts/import` tal cual, cada fila con un email ya existente en OTRA categoría hubiera creado un duplicado en vez de reusar el contacto real.
+
+**Alternativas consideradas:**
+- Un único endpoint de import parametrizado por `category` o `listId`: descartado — la lógica de dedup/creación difiere lo suficiente (una tabla fija vs. todo el workspace) como para que forzarlos a compartir código agregara más condicionales que claridad.
+- Exportar directo desde el servidor (nuevo endpoint): descartado — los miembros de la lista ya están cargados en el cliente, generar el archivo ahí evita un round-trip y un endpoint nuevo sin necesidad.
+
+**Trade-off:** el import de Lista nunca actualiza los campos de un contacto ya existente que matcheó por email (ni cambia su categoría) — solo lo agrega a la lista. Es deliberado (evita pisar datos existentes con una fila de importación posiblemente más vieja/incompleta), pero significa que un CSV con datos "más nuevos" para un contacto existente no los aplica.
+
+**Aplicabilidad futura:** el patrón "reusar por clave natural en todo el ámbito de datos, no solo en el sub-recurso actual" es reutilizable en cualquier import que aterrice en un agrupador (lista, tag, segmento) que no sea en sí mismo el dueño exclusivo de la entidad.
+
+**Verificación realizada:** (1) script contra la base de datos real probando que un contacto existente de categoría LEAD, matcheado por email desde un import de Lista, se reusa (no se duplica) y **conserva su categoría LEAD** sin cambios. (2) el endpoint fue ajustado durante la implementación (antes de shippear) porque la primera versión solo devolvía los contactos recién creados, no los matcheados — se corrigió juntando `addedContactIds` (creados + matcheados) y hacienda un `findMany` final sobre ese conjunto completo. (3) verificación visual en navegador sandboxed de los botones nuevos "Importar"/"Exportar" en el header de una Lista.

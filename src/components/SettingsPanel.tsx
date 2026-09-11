@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check, Trash2, ArrowUp, ArrowDown, KeyRound, RotateCcw } from "lucide-react";
+import { Copy, Check, Trash2, ArrowUp, ArrowDown, KeyRound, RotateCcw, Radar } from "lucide-react";
 import type { ContactCategory, PipelineStage } from "@/lib/types";
 import { CATEGORY_LABELS } from "@/lib/types";
 
@@ -20,6 +20,13 @@ type ArchivedContact = {
   deletedAt: string;
 };
 
+type HiringScanResult = {
+  companiesChecked: number;
+  companiesWithJobs: number;
+  signalsCreated: number;
+  details: { company: string; jobsFound: number; signalsCreated: number }[];
+};
+
 export function SettingsPanel({
   workspaceName,
   initialTokens,
@@ -36,6 +43,8 @@ export function SettingsPanel({
   const [archivedContacts, setArchivedContacts] = useState(initialArchivedContacts);
   const [rawToken, setRawToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<HiringScanResult | null>(null);
   const appUrl =
     typeof window !== "undefined" ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL;
 
@@ -85,6 +94,15 @@ export function SettingsPanel({
     if (!confirm("Esta acción no se puede deshacer. ¿Eliminar el contacto para siempre?")) return;
     const res = await fetch(`/api/contacts/${id}?permanent=true`, { method: "DELETE" });
     if (res.ok) setArchivedContacts((prev) => prev.filter((c) => c.id !== id));
+  }
+
+  async function runHiringScan() {
+    setScanning(true);
+    setScanResult(null);
+    const res = await fetch("/api/signals/hiring-scan", { method: "POST" });
+    setScanning(false);
+    if (!res.ok) return;
+    setScanResult(await res.json());
   }
 
   async function moveStage(index: number, direction: -1 | 1) {
@@ -260,6 +278,44 @@ export function SettingsPanel({
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-sm font-semibold text-neutral-900">Señales de contratación (piloto)</h2>
+        <p className="mt-1 text-sm text-neutral-500">
+          Busca vacantes públicas abiertas (Greenhouse/Lever) para la empresa de cada contacto y
+          carga una señal de tipo Contratación cuando encuentra algo. Es de mejor esfuerzo — solo
+          encuentra algo si la empresa usa uno de esos dos sistemas y el nombre coincide.
+        </p>
+
+        <div className="mt-3 rounded-xl border border-neutral-200 bg-white p-4">
+          <button
+            onClick={runHiringScan}
+            disabled={scanning}
+            className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+          >
+            <Radar size={15} /> {scanning ? "Buscando..." : "Buscar ahora"}
+          </button>
+
+          {scanResult && (
+            <div className="mt-3 space-y-2 text-sm">
+              <p className="text-neutral-700">
+                Revisadas <strong>{scanResult.companiesChecked}</strong> empresas · encontraron
+                vacantes <strong>{scanResult.companiesWithJobs}</strong> · señales nuevas creadas{" "}
+                <strong>{scanResult.signalsCreated}</strong>
+              </p>
+              {scanResult.details.length > 0 && (
+                <ul className="space-y-1 text-xs text-neutral-500">
+                  {scanResult.details.map((d) => (
+                    <li key={d.company}>
+                      {d.company}: {d.jobsFound > 0 ? `${d.jobsFound} vacante(s) — ${d.signalsCreated} señal(es) nueva(s)` : "sin resultados"}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
       </section>
     </div>
   );

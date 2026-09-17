@@ -2,8 +2,9 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, ListChecks, Users, Trash2 } from "lucide-react";
+import { Plus, ListChecks, Users, Trash2, Upload } from "lucide-react";
 import type { ContactListSummary } from "@/lib/types";
+import { ImportContactsModal } from "@/components/ImportContactsModal";
 
 export function ContactListsPage({ initialLists }: { initialLists: ContactListSummary[] }) {
   const router = useRouter();
@@ -11,6 +12,7 @@ export function ContactListsPage({ initialLists }: { initialLists: ContactListSu
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   // Guards against both the button and Enter-in-the-input triggering
   // handleCreate at nearly the same time — `disabled={saving}` alone has a
   // render-timing gap a ref closes synchronously.
@@ -49,13 +51,29 @@ export function ContactListsPage({ initialLists }: { initialLists: ContactListSu
             Agrupa contactos para inscribirlos juntos en una secuencia.
           </p>
         </div>
-        <button
-          onClick={() => setCreating(true)}
-          className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-neutral-800"
-        >
-          <Plus size={15} /> Nueva lista
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowImport(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3.5 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+          >
+            <Upload size={15} /> Importar CSV
+          </button>
+          <button
+            onClick={() => setCreating(true)}
+            className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+          >
+            <Plus size={15} /> Nueva lista
+          </button>
+        </div>
       </header>
+
+      {showImport && (
+        <ImportContactsModal
+          forNewList
+          onClose={() => setShowImport(false)}
+          onImported={() => router.refresh()}
+        />
+      )}
 
       <div className="flex-1 overflow-auto p-6">
         {creating && (

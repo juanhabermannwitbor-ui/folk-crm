@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Upload, X } from "lucide-react";
 import type { Contact, ContactCategory } from "@/lib/types";
 import {
@@ -28,24 +29,30 @@ type ImportResult = {
 export function ImportContactsModal({
   category,
   listId,
+  forNewList,
   onClose,
   onImported,
 }: {
-  // Uno de los dos, según desde dónde se abra el modal: category importa a
+  // Uno de los tres, según desde dónde se abra el modal: category importa a
   // una de las tablas (Clientes/Partners/Contactos); listId importa directo
-  // a una Lista, matcheando por email en vez de crear siempre.
+  // a una Lista ya existente, matcheando por email en vez de crear siempre;
+  // forNewList crea la Lista y la importación en el mismo paso.
   category?: ContactCategory;
   listId?: string;
+  forNewList?: boolean;
   onClose: () => void;
   onImported: (contacts: Contact[]) => void;
 }) {
+  const router = useRouter();
   const [step, setStep] = useState<Step>("select");
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<Record<string, string>[]>([]);
   const [mapping, setMapping] = useState<Partial<Record<ImportField, string>>>({});
+  const [newListName, setNewListName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
+  const [createdListId, setCreatedListId] = useState<string | null>(null);
 
   async function handleFile(file: File) {
     setError(null);
@@ -64,6 +71,9 @@ export function ImportContactsModal({
       setHeaders(parsed.headers);
       setRows(parsed.rows);
       setMapping(guessColumnMapping(parsed.headers));
+      if (forNewList && !newListName.trim()) {
+        setNewListName(file.name.replace(/\.(csv|xlsx|xls)$/i, ""));
+      }
       setStep("map");
     } catch {
       setError("No se pudo leer el archivo. Verificá que sea un .csv o .xlsx válido.");
@@ -75,8 +85,29 @@ export function ImportContactsModal({
       setError('Falta indicar qué columna es "Nombre".');
       return;
     }
+    if (forNewList && !newListName.trim()) {
+      setError("Falta el nombre de la lista.");
+      return;
+    }
     setImporting(true);
     setError(null);
+
+    let targetListId = listId;
+    if (forNewList) {
+      const listRes = await fetch("/api/lists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newListName.trim() }),
+      });
+      if (!listRes.ok) {
+        setImporting(false);
+        setError("No se pudo crear la lista.");
+        return;
+      }
+      const { list } = await listRes.json();
+      targetListId = list.id;
+      setCreatedListId(list.id);
+    }
 
     const contacts = rows.map((row) => {
       const get = (field: ImportField) => {
@@ -96,10 +127,10 @@ export function ImportContactsModal({
       };
     });
 
-    const res = await fetch(listId ? `/api/lists/${listId}/import` : "/api/contacts/import", {
+    const res = await fetch(targetListId ? `/api/lists/${targetListId}/import` : "/api/contacts/import", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(listId ? { contacts } : { category, contacts }),
+      body: JSON.stringify(targetListId ? { contacts } : { category, contacts }),
     });
     setImporting(false);
     if (!res.ok) {
@@ -151,6 +182,18 @@ export function ImportContactsModal({
               Detectamos <strong>{rows.length}</strong> filas. Confirmá qué columna corresponde a cada
               dato — dejá &ldquo;— no importar —&rdquo; si no aplica.
             </p>
+            {forNewList && (
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-neutral-600">Nombre de la lista *</span>
+                <input
+                  autoFocus
+                  value={newListName}
+                  onChange={(e) => setNewListName(e.target.value)}
+                  placeholder="Ej. Prospectos Fintech Q3"
+                  className="input"
+                />
+              </label>
+            )}
             <div className="space-y-2">
               {IMPORT_FIELDS.map((f) => (
                 <label key={f.field} className="flex items-center justify-between gap-3">
@@ -221,13 +264,21 @@ export function ImportContactsModal({
                 {result.skippedInvalid} se saltearon por no tener nombre.
               </p>
             )}
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={onClose}
-                className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100"
               >
                 Cerrar
               </button>
+              {createdListId && (
+                <button
+                  onClick={() => router.push(`/lists/${createdListId}`)}
+                  className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+                >
+                  Ver lista
+                </button>
+              )}
             </div>
           </div>
         )}

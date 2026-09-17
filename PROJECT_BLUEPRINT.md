@@ -804,7 +804,7 @@ Reusable principle: cualquier campo que termine en un `href`/`src` debe validars
 | Papelera (soft-delete) | DONE | |
 | Importación CSV/XLSX | DONE | tope de 500 filas por archivo |
 | Listas de contactos + inscripción masiva | DONE | |
-| Import/export CSV/XLSX en Listas | DONE | desde 2026-09-11 — import matchea por email en todo el workspace; export usa las mismas columnas de la plantilla — ver §18 |
+| Import/export CSV/XLSX en Listas | DONE | desde 2026-09-11 — import matchea por email en todo el workspace; export usa las mismas columnas de la plantilla; desde 2026-09-17 también se puede importar directo creando la Lista en el mismo paso — ver §18 |
 | Registro de auditoría de categoría | DONE | mitigación, no fix de causa raíz |
 | Modelo `Company` | TODO | evaluado, decidido posponer |
 | Enrichment (Apollo/Apify/etc.) | TODO | arquitectura discutida, cero código |
@@ -1179,3 +1179,17 @@ Cambios hechos después de la fecha de generación de este Blueprint, siguiendo 
 **Aplicabilidad futura:** el patrón "columna derivada, calculada en un único punto de escritura mediante un helper compartido, en vez de recalcular en cada lectura" es reutilizable para cualquier campo compuesto (nombre completo, dirección completa, etc.) que ya tenga muchos lectores dispersos en el código — evita el terremoto de tocar cada lectura a cambio de una sola función que hay que recordar llamar en cada escritura.
 
 **Verificación realizada:** `tsc --noEmit`, `eslint` y `next build` limpios. Script desechable contra la base real: (1) confirmó que los contactos ya existentes quedaron con `firstName = fullName` viejo y `lastName` vacío tras la migración; (2) crear con nombre+apellido calcula `fullName` correcto; (3) crear solo con nombre no deja un espacio colgando; (4) editar el apellido recalcula `fullName`. Los 4 casos pasaron.
+
+### 2026-09-17 — Importar CSV directo a una Lista nueva (sin crearla antes a mano)
+
+**Contexto:** el import a Listas ya existía (2026-09-11), pero exigía crear la Lista vacía primero y recién ahí importar — el usuario pidió poder subir el CSV directo, sin ese paso intermedio.
+
+**Decisión:** `ImportContactsModal` gana un tercer modo, `forNewList` (además de los existentes `category` y `listId`), accesible desde un botón nuevo "Importar CSV" en `/lists`. En este modo, el paso de mapeo de columnas pide además el nombre de la lista (autocompletado con el nombre del archivo subido, editable) y, al confirmar, primero crea la Lista (`POST /api/lists`) y recién con ese id hace la importación (`POST /api/lists/[id]/import`) — ambos endpoints ya existentes, sin cambios. La pantalla de resultado suma un botón "Ver lista" que navega directo a la Lista recién creada.
+
+**Por qué no un endpoint nuevo que combine crear+importar en una sola llamada:** encadenar dos llamadas ya existentes desde el cliente es más simple que escribir y mantener un tercer endpoint que haga lo mismo — no hay ninguna necesidad de que sea atómico (si la creación de la lista falla, no se intenta importar; si la importación falla después de crear la lista, la lista queda creada pero vacía, un estado inofensivo y fácil de entender, no un problema a prevenir con una transacción).
+
+**Trade-off:** si el import falla justo después de crear la lista, queda una Lista vacía con el nombre elegido — no se limpia sola. Aceptable: es exactamente el mismo estado que si alguien crea una lista vacía a mano y se arrepiente antes de importar nada; ya existe el botón de borrar lista para ese caso.
+
+**Aplicabilidad futura:** el patrón "encadenar dos acciones que ya existen por separado, desde el cliente, en vez de crear un endpoint combinado" es reutilizable siempre que ninguna de las dos necesite la garantía de atomicidad de una transacción — evita duplicar lógica de servidor solo para ahorrarse un paso de UI.
+
+**Verificación realizada:** `tsc --noEmit`, `eslint` y `next build` limpios. Script desechable contra la base real reproduciendo la secuencia completa (crear lista → importar 2 filas, una con apellido y otra sin) — la lista terminó con los 2 contactos y los nombres calculados correctamente.

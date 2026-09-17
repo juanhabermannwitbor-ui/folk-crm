@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resolveWorkspaceFromToken } from "@/lib/tokens";
 import { extensionContactSchema } from "@/lib/validation";
+import { buildFullName } from "@/lib/contactName";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -46,11 +47,14 @@ export async function POST(request: NextRequest) {
     where: { workspaceId: workspace.id, linkedinUrl: data.linkedinUrl, deletedAt: null },
   });
 
+  // On update, deliberately leave firstName/lastName/fullName untouched —
+  // the extension only ever scrapes one combined string, and re-scraping
+  // an already-saved profile shouldn't silently undo a name the user split
+  // into Nombre/Apellido by hand in the CRM.
   const contact = existing
     ? await prisma.contact.update({
         where: { id: existing.id },
         data: {
-          fullName: data.fullName,
           headline: data.headline || existing.headline,
           company: data.company || existing.company,
           title: data.title || existing.title,
@@ -61,7 +65,9 @@ export async function POST(request: NextRequest) {
     : await prisma.contact.create({
         data: {
           workspaceId: workspace.id,
-          fullName: data.fullName,
+          firstName: data.fullName,
+          lastName: null,
+          fullName: buildFullName(data.fullName, null),
           category: data.category ?? "INTERESTING",
           source: "LINKEDIN_EXTENSION",
           headline: data.headline || null,

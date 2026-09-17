@@ -84,6 +84,8 @@ export type Contact = {
   id: string;
   category: ContactCategory;
   source: ContactSource;
+  firstName: string;
+  lastName: string | null;
   fullName: string;
   headline: string | null;
   company: string | null;

@@ -4,6 +4,7 @@
 // {{token}} substitution. Narrowed to just the fields it reads so it works
 // with either representation without a type-shape mismatch.
 type MergeableContact = {
+  firstName: string;
   fullName: string;
   company: string | null;
   title: string | null;
@@ -15,7 +16,7 @@ export const SEQUENCE_MERGE_TOKENS: {
   label: string;
   get: (c: MergeableContact) => string;
 }[] = [
-  { token: "{{nombre}}", label: "Nombre", get: (c) => c.fullName.split(" ")[0] || c.fullName },
+  { token: "{{nombre}}", label: "Nombre", get: (c) => c.firstName },
   { token: "{{nombre_completo}}", label: "Nombre completo", get: (c) => c.fullName },
   { token: "{{empresa}}", label: "Empresa", get: (c) => c.company || "" },
   { token: "{{cargo}}", label: "Cargo", get: (c) => c.title || "" },

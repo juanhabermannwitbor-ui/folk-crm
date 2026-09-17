@@ -37,7 +37,8 @@ export function ContactFormModal({
   const [selectedCategory, setSelectedCategory] = useState<ContactCategory>(
     contact?.category ?? category
   );
-  const [fullName, setFullName] = useState(contact?.fullName ?? "");
+  const [firstName, setFirstName] = useState(contact?.firstName ?? "");
+  const [lastName, setLastName] = useState(contact?.lastName ?? "");
   const [title, setTitle] = useState(contact?.title ?? "");
   const [company, setCompany] = useState(contact?.company ?? "");
   const [location, setLocation] = useState(contact?.location ?? "");
@@ -73,7 +74,8 @@ export function ContactFormModal({
     setError(null);
 
     const payload = {
-      fullName,
+      firstName,
+      lastName: lastName || null,
       category: selectedCategory,
       title: title || null,
       company: company || null,
@@ -136,12 +138,19 @@ export function ContactFormModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Nombre completo *">
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Nombre *">
               <input
                 required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="input"
+              />
+            </Field>
+            <Field label="Apellido">
+              <input
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
                 className="input"
               />
             </Field>
@@ -262,7 +271,7 @@ export function ContactFormModal({
               </Field>
               <a
                 href={buildGoogleCalendarUrl({
-                  title: `Reunión con ${fullName || "contacto"}`,
+                  title: `Reunión con ${[firstName, lastName].filter(Boolean).join(" ") || "contacto"}`,
                   details: [title, company].filter(Boolean).join(" · ") || undefined,
                   date: nextFollowUpAt,
                   time: meetingTime,

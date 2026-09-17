@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireWorkspace } from "@/lib/workspace";
 import { updateContactSchema } from "@/lib/validation";
 import { syncFollowUpTask } from "@/lib/followUpTask";
+import { buildFullName } from "@/lib/contactName";
 
 async function loadOwnedContact(workspaceId: string, id: string) {
   const contact = await prisma.contact.findUnique({ where: { id } });
@@ -30,10 +31,24 @@ export async function PATCH(
   const data = parsed.data;
   const nextCategory = data.category ?? existing.category;
 
+  // stageOrder-only PATCHes (pipeline drag reconciliation) send neither
+  // field — recomputing fullName from the existing values in that case
+  // would be a no-op, but skip the write entirely when nothing named
+  // changed rather than doing pointless work on every drag.
+  const nameChanged = data.firstName !== undefined || data.lastName !== undefined;
+  const nextFirstName = data.firstName ?? existing.firstName;
+  const nextLastName = data.lastName !== undefined ? data.lastName || null : existing.lastName;
+
   const contact = await prisma.contact.update({
     where: { id },
     data: {
-      ...(data.fullName !== undefined ? { fullName: data.fullName } : {}),
+      ...(nameChanged
+        ? {
+            firstName: nextFirstName,
+            lastName: nextLastName,
+            fullName: buildFullName(nextFirstName, nextLastName),
+          }
+        : {}),
       ...(data.category !== undefined ? { category: data.category } : {}),
       ...(data.headline !== undefined ? { headline: data.headline || null } : {}),
       ...(data.company !== undefined ? { company: data.company || null } : {}),

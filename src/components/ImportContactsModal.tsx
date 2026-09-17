@@ -71,8 +71,8 @@ export function ImportContactsModal({
   }
 
   async function handleImport() {
-    if (!mapping.fullName) {
-      setError('Falta indicar qué columna es "Nombre completo".');
+    if (!mapping.firstName) {
+      setError('Falta indicar qué columna es "Nombre".');
       return;
     }
     setImporting(true);
@@ -84,7 +84,8 @@ export function ImportContactsModal({
         return col ? (row[col] ?? "").toString().trim() : "";
       };
       return {
-        fullName: get("fullName"),
+        firstName: get("firstName"),
+        lastName: get("lastName") || null,
         email: get("email") || null,
         phone: get("phone") || null,
         company: get("company") || null,

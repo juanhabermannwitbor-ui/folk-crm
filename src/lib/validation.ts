@@ -33,7 +33,8 @@ export const contactCategorySchema = z.enum([
 export const followUpActionSchema = z.enum(["CALL", "EMAIL", "LINKEDIN", "WHATSAPP", "MEETING"]);
 
 export const createContactSchema = z.object({
-  fullName: z.string().trim().min(1, "Name is required").max(200),
+  firstName: z.string().trim().min(1, "El nombre es obligatorio").max(120),
+  lastName: z.string().trim().max(120).optional().nullable(),
   category: contactCategorySchema.default("LEAD"),
   headline: z.string().trim().max(300).optional().nullable(),
   company: z.string().trim().max(200).optional().nullable(),
@@ -118,10 +119,11 @@ export const extensionContactSchema = z.object({
 });
 
 // Bulk import (CSV/XLSX) — deliberately looser than createContactSchema:
-// source spreadsheets are messy, and only fullName is actually required.
+// source spreadsheets are messy, and only firstName is actually required.
 // A malformed email/URL is kept as free text rather than rejecting the row.
 export const importContactRowSchema = z.object({
-  fullName: z.string().trim().min(1),
+  firstName: z.string().trim().min(1),
+  lastName: z.string().trim().optional().nullable(),
   email: z.string().trim().max(200).optional().nullable(),
   phone: z.string().trim().max(50).optional().nullable(),
   company: z.string().trim().max(200).optional().nullable(),

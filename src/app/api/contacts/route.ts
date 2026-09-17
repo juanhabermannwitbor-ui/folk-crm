@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireWorkspace } from "@/lib/workspace";
 import { createContactSchema, contactCategorySchema } from "@/lib/validation";
 import { syncFollowUpTask } from "@/lib/followUpTask";
+import { buildFullName } from "@/lib/contactName";
 
 export async function GET(request: NextRequest) {
   const ctx = await requireWorkspace();
@@ -50,7 +51,9 @@ export async function POST(request: NextRequest) {
   const contact = await prisma.contact.create({
     data: {
       workspaceId: ctx.workspace.id,
-      fullName: data.fullName,
+      firstName: data.firstName,
+      lastName: data.lastName || null,
+      fullName: buildFullName(data.firstName, data.lastName),
       category: data.category,
       headline: data.headline || null,
       company: data.company || null,

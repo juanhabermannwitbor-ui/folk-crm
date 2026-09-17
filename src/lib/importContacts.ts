@@ -5,7 +5,8 @@
 import type { Contact } from "@/lib/types";
 
 export type ImportField =
-  | "fullName"
+  | "firstName"
+  | "lastName"
   | "email"
   | "phone"
   | "company"
@@ -15,7 +16,8 @@ export type ImportField =
   | "notes";
 
 export const IMPORT_FIELDS: { field: ImportField; label: string; required?: boolean }[] = [
-  { field: "fullName", label: "Nombre completo", required: true },
+  { field: "firstName", label: "Nombre", required: true },
+  { field: "lastName", label: "Apellido" },
   { field: "email", label: "Email" },
   { field: "phone", label: "Teléfono" },
   { field: "company", label: "Empresa" },
@@ -26,7 +28,11 @@ export const IMPORT_FIELDS: { field: ImportField; label: string; required?: bool
 ];
 
 const HEADER_ALIASES: Record<ImportField, string[]> = {
-  fullName: ["nombre completo", "nombre", "full name", "name", "fullname", "contacto"],
+  // "nombre completo"/"full name" quedan acá (no en lastName) porque, ante
+  // una sola columna combinada, el criterio del proyecto es volcar todo el
+  // valor a "Nombre" y dejar "Apellido" vacío en vez de adivinar el corte.
+  firstName: ["nombre completo", "nombre", "first name", "given name", "full name", "name", "fullname", "contacto"],
+  lastName: ["apellido", "last name", "surname", "family name"],
   email: ["email", "correo", "correo electronico", "e-mail", "mail"],
   phone: ["telefono", "phone", "celular", "whatsapp", "movil", "numero", "numero de telefono"],
   company: ["empresa", "company", "organizacion", "compania", "cuenta"],

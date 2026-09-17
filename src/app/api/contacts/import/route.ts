@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireWorkspace } from "@/lib/workspace";
 import { importContactsSchema, sanitizeHttpUrl } from "@/lib/validation";
+import { buildFullName } from "@/lib/contactName";
 
 // Bulk-creates contacts parsed client-side from a CSV/XLSX upload. Skips
 // rows without a name and rows whose email already exists in this
@@ -29,8 +30,8 @@ export async function POST(request: NextRequest) {
   let skippedDuplicate = 0;
 
   for (const row of rows) {
-    const fullName = row.fullName.trim();
-    if (!fullName) {
+    const firstName = row.firstName.trim();
+    if (!firstName) {
       skippedInvalid++;
       continue;
     }
@@ -42,12 +43,15 @@ export async function POST(request: NextRequest) {
       continue;
     }
 
+    const lastName = row.lastName?.trim() || null;
     const contact = await prisma.contact.create({
       data: {
         workspaceId: ctx.workspace.id,
         category,
         source: "IMPORT",
-        fullName,
+        firstName,
+        lastName,
+        fullName: buildFullName(firstName, lastName),
         email,
         phone: row.phone?.trim() || null,
         company: row.company?.trim() || null,

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireWorkspace } from "@/lib/workspace";
 import { listImportSchema, sanitizeHttpUrl } from "@/lib/validation";
+import { buildFullName } from "@/lib/contactName";
 
 async function loadOwnedList(workspaceId: string, id: string) {
   const list = await prisma.contactList.findUnique({ where: { id } });
@@ -51,8 +52,8 @@ export async function POST(
   let skippedInvalid = 0;
 
   for (const row of parsed.data.contacts) {
-    const fullName = row.fullName.trim();
-    if (!fullName) {
+    const firstName = row.firstName.trim();
+    if (!firstName) {
       skippedInvalid++;
       continue;
     }
@@ -64,12 +65,15 @@ export async function POST(
     if (contactId) {
       matchedCount++;
     } else {
+      const lastName = row.lastName?.trim() || null;
       const contact = await prisma.contact.create({
         data: {
           workspaceId: ctx.workspace.id,
           category: "INTERESTING",
           source: "IMPORT",
-          fullName,
+          firstName,
+          lastName,
+          fullName: buildFullName(firstName, lastName),
           email,
           phone: row.phone?.trim() || null,
           company: row.company?.trim() || null,

@@ -1158,3 +1158,24 @@ Cambios hechos después de la fecha de generación de este Blueprint, siguiendo 
 **Lo que queda fuera del alcance de un agente:** si esa variable sigue cargada en las variables de entorno de Vercel, removerla ahí es una acción manual del usuario — el repositorio no tiene visibilidad de qué hay cargado en Vercel más allá de lo que documenta `.env.example`.
 
 **Verificación realizada:** grep sobre todo `src/` sin resultados para `SERVICE_ROLE_KEY`, confirmando que remover la línea de `.env.example` no rompe nada.
+
+### 2026-09-17 — `Contact.fullName` dividido en `firstName`/`lastName`
+
+**Decisión:** el formulario de contacto pasa a pedir "Nombre" y "Apellido" por separado (`firstName` obligatorio, `lastName` opcional), en vez de un único "Nombre completo". `fullName` **se mantiene** en el schema como columna real, pero deja de ser editable directamente — ahora se calcula en el servidor con `buildFullName()` (`src/lib/contactName.ts`) cada vez que `firstName`/`lastName` cambian, y sigue siendo la fuente para todo lo que ya ordenaba/buscaba/exportaba por el nombre como un solo string (24 lugares del código lo leen; ninguno tuvo que tocarse).
+
+**Por qué no eliminar `fullName` y recalcularlo al vuelo en cada lugar:** hubiera significado tocar los ~13 archivos que solo *leen* `fullName` para mostrarlo, ordenar (`orderBy: { fullName }`) o buscarlo — sin ningún beneficio real, solo para pasar de una columna real a una calculada en cada query. Mantenerla como columna derivada, escrita en el único punto donde cambia, es el cambio más chico que resuelve el pedido.
+
+**Migración de los contactos existentes:** no hay forma confiable de adivinar dónde separar un `fullName` ya guardado (apellidos compuestos, nombres de una sola palabra, etc.) — siguiendo el mismo criterio ya usado para el parseo de cargo/empresa de LinkedIn (§18, 2026-09-11), la migración vuelca el `fullName` completo a `firstName` y deja `lastName` vacío para los 19 contactos reales, en vez de arriesgarse a partir mal un nombre real. Corregirlos queda a mano, a discreción del usuario.
+
+**Comportamiento deliberadamente distinto en la extensión de Chrome:** antes, cada vez que la extensión volvía a escanear un perfil de LinkedIn ya guardado, sobreescribía `fullName` sin condición. Ahora que el nombre es un dato más "delicado" (compuesto de dos campos que el usuario puede haber separado a mano), un re-escaneo **ya no toca** `firstName`/`lastName`/`fullName` de un contacto existente — solo refresca headline/empresa/cargo/ubicación/avatar, que es lo que de verdad cambia entre visitas al mismo perfil. Antes de esto, un re-escaneo silencioso podía deshacer una separación de nombre ya hecha a mano.
+
+**Alternativas consideradas:**
+- Reemplazar `fullName` completamente (sin columna derivada), recalculándolo en cada lugar que lo necesita: descartado por el motivo de arriba — mucho más tocado, cero beneficio.
+- Adivinar el corte nombre/apellido en la migración con una heurística (ej. "última palabra = apellido"): descartado — los apellidos compuestos (muy comunes en Argentina/LATAM) harían que la heurística falle silenciosamente para una fracción real de los contactos, violando el criterio ya establecido de este proyecto de preferir un fallback vacío/seguro antes que adivinar mal.
+- Requerir `lastName` como obligatorio igual que `firstName`: descartado — hay contactos reales de los que solo se conoce un nombre (ej. captura parcial de LinkedIn), forzarlo hubiera bloqueado casos legítimos.
+
+**Trade-off:** los 19 contactos migrados van a mostrar el nombre completo viejo en el campo "Nombre" con "Apellido" vacío hasta que alguien los edite a mano — un costo de prolijidad temporal, aceptado a cambio de no arriesgar corromper un dato real.
+
+**Aplicabilidad futura:** el patrón "columna derivada, calculada en un único punto de escritura mediante un helper compartido, en vez de recalcular en cada lectura" es reutilizable para cualquier campo compuesto (nombre completo, dirección completa, etc.) que ya tenga muchos lectores dispersos en el código — evita el terremoto de tocar cada lectura a cambio de una sola función que hay que recordar llamar en cada escritura.
+
+**Verificación realizada:** `tsc --noEmit`, `eslint` y `next build` limpios. Script desechable contra la base real: (1) confirmó que los contactos ya existentes quedaron con `firstName = fullName` viejo y `lastName` vacío tras la migración; (2) crear con nombre+apellido calcula `fullName` correcto; (3) crear solo con nombre no deja un espacio colgando; (4) editar el apellido recalcula `fullName`. Los 4 casos pasaron.

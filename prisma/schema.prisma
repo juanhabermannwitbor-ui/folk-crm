@@ -117,6 +117,12 @@ model Contact {
   category    ContactCategory @default(LEAD)
   source      ContactSource   @default(MANUAL)
 
+  firstName   String
+  lastName    String?
+  // Derivado de firstName/lastName en el servidor (ver src/lib/contactName.ts)
+  // — no es editable directamente. Se mantiene como columna real (no
+  // calculada en cada query) porque muchos lugares ordenan/buscan/exportan
+  // por el nombre completo como un solo string.
   fullName    String
   headline    String?
   company     String?

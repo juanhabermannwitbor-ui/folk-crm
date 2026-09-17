@@ -108,7 +108,7 @@ Este nivel de "todo en un commit" indica que el MVP se diseñó y construyó com
 - Modelo `Company` / `ContactEnrichment`.
 - Cualquier integración con Apollo, Apify, FullEnrich, Prospeo o similares.
 - Detección automática de señales más allá del piloto de HIRING (ver §18) — el resto de los tipos siguen siendo manuales.
-- Remoción de la variable `SUPABASE_SERVICE_ROLE_KEY` de `.env.example` (existe pero no se usa en ningún lugar del código).
+- ~~Remoción de la variable `SUPABASE_SERVICE_ROLE_KEY` de `.env.example`~~ — hecho el 2026-09-17; todavía pendiente removerla de Vercel si sigue cargada ahí (el repositorio no puede confirmarlo).
 
 ### Qué se descartó deliberadamente
 
@@ -827,7 +827,7 @@ Todo lo marcado `DONE` en §13.
 Mejoras chicas y evidentes a partir del estado actual:
 - ~~Capturar `title`/`company` reales desde LinkedIn en el content script~~ — hecho el 2026-09-11 (heurístico, ver §18).
 - ~~Acotar `host_permissions` de la extensión a la URL real de producción + localhost~~ — hecho el 2026-09-11 (ver §18).
-- Remover `SUPABASE_SERVICE_ROLE_KEY` de `.env.example`/Vercel si sigue sin usarse.
+- ~~Remover `SUPABASE_SERVICE_ROLE_KEY` de `.env.example`~~ — hecho el 2026-09-17. Falta confirmar/remover en Vercel (acción del usuario).
 - ~~Agregar una CSP básica.~~ — hecho el 2026-09-11 (ver §18).
 - ~~Import/export CSV/XLSX en Listas.~~ — hecho el 2026-09-11 (ver §18).
 - ~~Reconciliar `stageOrder` de todas las tarjetas de una columna al soltar un drag.~~ — hecho el 2026-09-17 (ver §18).
@@ -951,7 +951,7 @@ Ahora contame: [DESCRIBÍ ACÁ TU NUEVO PROYECTO].
 **Hallazgos de seguridad relevantes para este Blueprint** (auditados en una sesión previa, documentados acá porque afectan qué tan "listo para producción" está el patrón de autenticación de extensión de §10):
 - `linkedinUrl`/`avatarUrl` ahora restringidos a esquemas http(s) — corregido (commit `16e63bd`).
 - `host_permissions` de la extensión más amplio de lo necesario — **corregido el 2026-09-11** (ver §18).
-- `SUPABASE_SERVICE_ROLE_KEY` declarada en `.env.example` pero sin ningún uso en el código — revisar si está cargada en Vercel y removerla si no se usa.
+- ~~`SUPABASE_SERVICE_ROLE_KEY` declarada en `.env.example` pero sin ningún uso en el código~~ — removida de `.env.example` el 2026-09-17. Si sigue cargada en Vercel, es acción del usuario (el repositorio no puede confirmarlo ni removerla ahí).
 - Una dependencia de las herramientas de Prisma (`deepmerge-ts`, vía `@prisma/config`) tiene un CVE alto — solo afecta al tooling de desarrollo/build, no al runtime desplegado.
 - Sin CSP configurado — **agregada el 2026-09-11**, solo en producción (ver §18).
 - Las 13 tablas de `public` sin RLS — expuestas sin restricción vía la API PostgREST de Supabase a cualquiera con la anon key pública — **corregido el 2026-09-17** (ver §18, hallazgo CRÍTICO).
@@ -1150,3 +1150,11 @@ Cambios hechos después de la fecha de generación de este Blueprint, siguiendo 
 **Trade-off:** ahora un drag dispara N requests PATCH en paralelo (uno por tarjeta de la columna final) en vez de 1 — para el tamaño real de una columna de pipeline (decenas, no miles) es irrelevante; con columnas muy grandes convendría un endpoint de reordenamiento masivo con una sola transacción, deliberadamente fuera de alcance acá.
 
 **Verificación realizada:** `tsc --noEmit` y `eslint` limpios en los 6 componentes tocados. Script desechable contra la base real simulando "arrastrar la 3ª tarjeta de una columna al principio": las 3 quedaron con `stageOrder` secuencial y sin duplicados, en el orden visual esperado, confirmado releyendo la tabla ordenada por `stageOrder` (no por el estado de React).
+
+### 2026-09-17 — `SUPABASE_SERVICE_ROLE_KEY` removida de `.env.example`
+
+**Decisión:** se confirmó por grep (cero resultados en `src/`) que la variable nunca se usó en el código, y se removió de `.env.example`. De paso se corrigió `SEQUENCES_FROM_EMAIL` en el mismo archivo, que todavía tenía el ejemplo viejo `mail.witbor.com` en vez del subdominio real (`cx.witbor.com`).
+
+**Lo que queda fuera del alcance de un agente:** si esa variable sigue cargada en las variables de entorno de Vercel, removerla ahí es una acción manual del usuario — el repositorio no tiene visibilidad de qué hay cargado en Vercel más allá de lo que documenta `.env.example`.
+
+**Verificación realizada:** grep sobre todo `src/` sin resultados para `SERVICE_ROLE_KEY`, confirmando que remover la línea de `.env.example` no rompe nada.

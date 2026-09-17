@@ -44,9 +44,9 @@ export function SequenceList({ initialSequences }: { initialSequences: SequenceS
         </button>
       </header>
 
-      <div className="rounded-lg border border-amber-200 bg-amber-50 mx-6 mt-4 px-4 py-2.5 text-sm text-amber-800">
-        El envío real todavía no está conectado (falta un dominio de correo verificado). Por ahora
-        puedes diseñar los pasos y ver quién quedaría inscrito.
+      <div className="rounded-lg border border-neutral-200 bg-neutral-50 mx-6 mt-4 px-4 py-2.5 text-sm text-neutral-600">
+        El envío real ya está conectado. Los pasos vencidos se mandan al tocar &ldquo;Procesar envíos
+        pendientes&rdquo; en Ajustes — no hay un envío automático corriendo solo en segundo plano.
       </div>
 
       <div className="flex-1 overflow-auto p-6">

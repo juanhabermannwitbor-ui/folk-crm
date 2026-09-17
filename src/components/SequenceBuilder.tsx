@@ -188,9 +188,10 @@ export function SequenceBuilder({
         />
       </header>
 
-      <div className="rounded-lg border border-amber-200 bg-amber-50 mx-6 mt-4 px-4 py-2.5 text-sm text-amber-800">
-        Diseño únicamente por ahora — el envío automático se activa cuando conecten un dominio de
-        correo verificado.
+      <div className="rounded-lg border border-neutral-200 bg-neutral-50 mx-6 mt-4 px-4 py-2.5 text-sm text-neutral-600">
+        El envío real ya está conectado. Los pasos vencidos de los inscritos se mandan al tocar
+        &ldquo;Procesar envíos pendientes&rdquo; en Ajustes — no hay un envío automático corriendo
+        solo en segundo plano.
       </div>
 
       <div className="flex flex-1 gap-6 overflow-hidden px-6 py-4">

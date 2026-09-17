@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus, Trash2, Search, X, Upload, Download } from "lucide-react";
 import type { Contact, ContactListDetail as ContactListDetailType } from "@/lib/types";
@@ -21,6 +21,9 @@ export function ContactListDetail({
   const [showImport, setShowImport] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
+  const deletingRef = useRef(false);
 
   const candidateContacts = useMemo(() => {
     const memberIds = new Set(list.members.map((c) => c.id));
@@ -51,6 +54,43 @@ export function ContactListDetail({
   async function removeContact(contactId: string) {
     setList((prev) => ({ ...prev, members: prev.members.filter((c) => c.id !== contactId) }));
     await fetch(`/api/lists/${list.id}/members/${contactId}`, { method: "DELETE" });
+  }
+
+  function toggleSelected(contactId: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(contactId)) next.delete(contactId);
+      else next.add(contactId);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) =>
+      prev.size === list.members.length ? new Set() : new Set(list.members.map((c) => c.id))
+    );
+  }
+
+  // Borra de verdad los contactos seleccionados (soft-delete, van a la
+  // Papelera) — a diferencia de "Quitar de la lista", que solo saca la
+  // relación y deja el contacto intacto en el resto del workspace.
+  async function deleteSelected() {
+    if (deletingRef.current || selectedIds.size === 0) return;
+    if (
+      !confirm(
+        `¿Eliminar ${selectedIds.size} contacto${selectedIds.size === 1 ? "" : "s"}? No solo se quitan de esta lista — se eliminan del workspace (podés restaurarlos desde la Papelera en Ajustes).`
+      )
+    ) {
+      return;
+    }
+    deletingRef.current = true;
+    setDeleting(true);
+    const ids = [...selectedIds];
+    await Promise.all(ids.map((id) => fetch(`/api/contacts/${id}`, { method: "DELETE" })));
+    deletingRef.current = false;
+    setDeleting(false);
+    setSelectedIds(new Set());
+    setList((prev) => ({ ...prev, members: prev.members.filter((c) => !ids.includes(c.id)) }));
   }
 
   function handleImported(imported: Contact[]) {
@@ -85,6 +125,15 @@ export function ContactListDetail({
           className="flex-1 rounded-md border border-transparent px-1.5 py-1 text-lg font-semibold text-neutral-900 hover:border-neutral-200 focus:border-neutral-400 focus:outline-none"
         />
         <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <button
+              onClick={deleteSelected}
+              disabled={deleting}
+              className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-100 disabled:opacity-50"
+            >
+              <Trash2 size={15} /> {deleting ? "Eliminando..." : `Eliminar (${selectedIds.size})`}
+            </button>
+          )}
           <button
             onClick={() => setShowImport(true)}
             className="flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
@@ -146,6 +195,14 @@ export function ContactListDetail({
             <table className="w-full text-left text-sm">
               <thead className="border-b border-neutral-200 bg-neutral-50 text-xs font-medium uppercase tracking-wide text-neutral-500">
                 <tr>
+                  <th className="w-10 px-4 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size > 0 && selectedIds.size === list.members.length}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 accent-neutral-900"
+                    />
+                  </th>
                   <th className="px-4 py-2.5">Nombre</th>
                   <th className="px-4 py-2.5">Tipo</th>
                   <th className="px-4 py-2.5">Empresa / cargo</th>
@@ -156,6 +213,14 @@ export function ContactListDetail({
               <tbody className="divide-y divide-neutral-100">
                 {list.members.map((c) => (
                   <tr key={c.id} className="hover:bg-neutral-50">
+                    <td className="px-4 py-2.5">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(c.id)}
+                        onChange={() => toggleSelected(c.id)}
+                        className="h-4 w-4 accent-neutral-900"
+                      />
+                    </td>
                     <td className="px-4 py-2.5 font-medium text-neutral-900">{c.fullName}</td>
                     <td className="px-4 py-2.5 text-neutral-600">{CATEGORY_LABELS[c.category]}</td>
                     <td className="px-4 py-2.5 text-neutral-600">
@@ -165,7 +230,7 @@ export function ContactListDetail({
                     <td className="px-4 py-2.5 text-right">
                       <button
                         onClick={() => removeContact(c.id)}
-                        title="Quitar de la lista"
+                        title="Quitar de la lista (no elimina el contacto)"
                         className="rounded-md p-1.5 text-neutral-300 hover:bg-red-50 hover:text-red-500"
                       >
                         <Trash2 size={15} />

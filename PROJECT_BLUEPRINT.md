@@ -1193,3 +1193,17 @@ Cambios hechos después de la fecha de generación de este Blueprint, siguiendo 
 **Aplicabilidad futura:** el patrón "encadenar dos acciones que ya existen por separado, desde el cliente, en vez de crear un endpoint combinado" es reutilizable siempre que ninguna de las dos necesite la garantía de atomicidad de una transacción — evita duplicar lógica de servidor solo para ahorrarse un paso de UI.
 
 **Verificación realizada:** `tsc --noEmit`, `eslint` y `next build` limpios. Script desechable contra la base real reproduciendo la secuencia completa (crear lista → importar 2 filas, una con apellido y otra sin) — la lista terminó con los 2 contactos y los nombres calculados correctamente.
+
+### 2026-09-17 — Selección múltiple + eliminar contactos desde una Lista
+
+**Contexto:** el único botón de borrado dentro de una Lista era "Quitar de la lista" (por fila), que solo borra la relación `ContactListMember` — el contacto sigue existiendo en el workspace igual. El usuario necesitaba poder deshacer una importación de prueba con la garantía de que los contactos en sí quedaran eliminados, no solo desvinculados de la lista.
+
+**Decisión:** checkbox por fila + uno en el header para seleccionar todo, y un botón "Eliminar (N)" que aparece solo cuando hay algo seleccionado. Al confirmar, llama al mismo endpoint que ya usa el borrado individual en las otras tablas (`DELETE /api/contacts/[id]`, sin `?permanent=true` — soft-delete real, no solo remoción de la lista) para cada contacto seleccionado, en paralelo.
+
+**Por qué reusar el soft-delete existente en vez de una eliminación permanente directa:** consistencia con el resto de la app — "Eliminar" en Clientes/Partners/Contactos ya es soft-delete (a Papelera), y esta acción debía comportarse igual: reversible por accidente, con la eliminación definitiva reservada a la Papelera en Ajustes.
+
+**El texto de confirmación es explícito sobre la diferencia:** aclara "no solo se quitan de esta lista — se eliminan del workspace", precisamente porque ya existía un botón parecido ("Quitar de la lista") con un efecto mucho más liviano, y la confusión entre los dos es el problema real que se estaba reportando.
+
+**Detalle verificado, no un bug:** al soft-deletear un contacto, la fila de `ContactListMember` que lo vinculaba a la lista no se borra sola — queda huérfana. No hace falta limpiarla: la página ya filtraba `members` por `contact: { deletedAt: null }` al cargar (para el caso normal de un contacto borrado desde otra pantalla mientras seguía en una lista), así que el contacto desaparece de la vista igual, sin cambios adicionales.
+
+**Verificación realizada:** `tsc --noEmit`, `eslint` y `next build` limpios. Script desechable contra la base real: crear una lista con 3 contactos, soft-deletear 2 de los 3, confirmar que esos 2 quedan con `deletedAt` seteado (Papelera) y el tercero intacto; confirmado además que la fila de membresía huérfana no afecta la vista porque el query de la página ya filtraba por contactos no borrados.

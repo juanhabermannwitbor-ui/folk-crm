@@ -130,22 +130,31 @@ export function PipelineBoard({
     const stageId = columns[overId] ? overId : findColumnOf(overId);
     if (!stageId) return;
 
-    setColumns((prev) => {
-      const items = prev[stageId];
-      const oldIndex = items.findIndex((c) => c.id === activeId);
-      const newIndex = columns[overId] ? items.length - 1 : items.findIndex((c) => c.id === overId);
-      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return prev;
-      return { ...prev, [stageId]: arrayMove(items, oldIndex, newIndex) };
-    });
+    const items = columns[stageId];
+    const oldIndex = items.findIndex((c) => c.id === activeId);
+    const newIndex = columns[overId] ? items.length - 1 : items.findIndex((c) => c.id === overId);
+    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
 
-    const finalItems = columns[stageId];
-    const idx = finalItems.findIndex((c) => c.id === activeId);
+    const finalItems = arrayMove(items, oldIndex, newIndex);
+    setColumns((prev) => ({ ...prev, [stageId]: finalItems }));
 
-    await fetch(`/api/contacts/${activeId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pipelineStageId: stageId, stageOrder: idx === -1 ? finalItems.length : idx }),
-    });
+    // Reconcile every card's stageOrder in this column, not just the one
+    // dragged — otherwise the untouched cards keep their old value, which
+    // can tie or invert the visual order once the page reloads and re-sorts
+    // by stageOrder.
+    await Promise.all(
+      finalItems.map((contact, index) =>
+        fetch(`/api/contacts/${contact.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            contact.id === activeId
+              ? { pipelineStageId: stageId, stageOrder: index }
+              : { stageOrder: index }
+          ),
+        })
+      )
+    );
   }
 
   function handleCreated(contact: Contact) {

@@ -830,7 +830,7 @@ Mejoras chicas y evidentes a partir del estado actual:
 - Remover `SUPABASE_SERVICE_ROLE_KEY` de `.env.example`/Vercel si sigue sin usarse.
 - ~~Agregar una CSP básica.~~ — hecho el 2026-09-11 (ver §18).
 - ~~Import/export CSV/XLSX en Listas.~~ — hecho el 2026-09-11 (ver §18).
-- Reconciliar `stageOrder` de todas las tarjetas de una columna al soltar un drag (hoy solo se persiste la tarjeta arrastrada).
+- ~~Reconciliar `stageOrder` de todas las tarjetas de una columna al soltar un drag.~~ — hecho el 2026-09-17 (ver §18).
 
 ### V2 — Product evolution
 
@@ -1136,3 +1136,17 @@ Cambios hechos después de la fecha de generación de este Blueprint, siguiendo 
 **Aplicabilidad futura:** en cualquier proyecto Supabase + Prisma donde TODO el acceso a datos pase por la conexión directa a Postgres (rol con `BYPASSRLS`) y nunca por PostgREST, la corrección de "RLS Disabled in Public" es simplemente habilitar RLS sin policies en cada tabla — no hace falta modelar políticas granulares que nunca se van a evaluar. Vale la pena correr el linter de seguridad de Supabase (Database → Linter, o el reporte que ya manda por email/dashboard) de entrada en cualquier proyecto nuevo con Supabase, no solo cuando alguien lo nota manualmente.
 
 **Verificación realizada:** (1) antes del fix, no se probó explotarlo en producción por seguridad — se confirmó el modelo de riesgo por código (grep sin resultados de `supabase.from(`, confirmando que ninguna lectura de la app depende de PostgREST). (2) migración aplicada a la base real; script desechable confirmando `relrowsecurity = true` en las 14 tablas vía `pg_class`. (3) Prisma probado después del fix — `workspace.count()`/`contact.count()` siguieron funcionando idénticos, confirmando que el rol de conexión no se vio afectado. (4) **prueba directa post-fix**: `curl` a `.../rest/v1/Contact?select=id,fullName,email` con la anon key real del proyecto — devolvió `HTTP 200` con `[]` (antes del fix habría devuelto los 19 contactos reales con nombre y email; ver el modelo de riesgo del punto 1) — confirma que el agujero está cerrado en producción, no solo en teoría.
+
+### 2026-09-17 — Doble-submit en 5 componentes más + reconciliación de `stageOrder` en el pipeline
+
+**Doble-submit:** el mismo bug ya corregido en `ContactFormModal` (`disabled={saving}` solo no cierra la ventana de una doble-click rápida antes de que React confirme el re-render) estaba presente en otros 5 componentes: `ContactsTable` (agregar/crear lista), `ContactListsPage` (crear lista), `DemandSignalPanel` (guardar señal y crear tarea desde la Recomendación de Acción), `TaskList` (crear tarea) y `SequenceList` (crear secuencia). Mismo fix en los 5: un `useRef` chequeado sincrónicamente al principio de la función, no solo el estado `saving` que ya existía.
+
+**Reconciliación de `stageOrder`:** `PipelineBoard.handleDragEnd` solo mandaba un PATCH con el `stageOrder` de la tarjeta arrastrada — el resto de las tarjetas de esa columna nunca se actualizaban, así que después de unos drags quedaban valores de `stageOrder` repetidos o invertidos respecto al orden visual real (invisible en la sesión activa porque el estado de React ya tenía el orden correcto, pero se perdía al recargar la página). Además, el cómputo del índice final leía `columns[stageId]` de una closure desactualizada (antes de que el propio `setColumns` de esa misma función surtiera efecto), así que ni siquiera la tarjeta arrastrada quedaba siempre con el índice correcto en un reordenamiento dentro de la misma columna.
+
+**Decisión:** calcular `finalItems` de forma puramente local (sin depender de closures de estado potencialmente desactualizadas) y, tras el drop, mandar un PATCH por cada tarjeta de la columna final con su nuevo índice secuencial — no solo la arrastrada. Se reusa el mismo endpoint `PATCH /api/contacts/[id]` ya existente (acepta `{ stageOrder }` solo, sin disparar auditoría ni otros efectos secundarios) en vez de crear un endpoint de reordenamiento masivo nuevo.
+
+**Por qué no reconciliar también la columna de origen en un movimiento entre columnas:** los huecos que deja un `stageOrder` al sacar una tarjeta (ej. queda 0, 2, 3) no rompen el ordenamiento relativo de las que quedan — no hace falta re-numerarlas, es trabajo sin beneficio real.
+
+**Trade-off:** ahora un drag dispara N requests PATCH en paralelo (uno por tarjeta de la columna final) en vez de 1 — para el tamaño real de una columna de pipeline (decenas, no miles) es irrelevante; con columnas muy grandes convendría un endpoint de reordenamiento masivo con una sola transacción, deliberadamente fuera de alcance acá.
+
+**Verificación realizada:** `tsc --noEmit` y `eslint` limpios en los 6 componentes tocados. Script desechable contra la base real simulando "arrastrar la 3ª tarjeta de una columna al principio": las 3 quedaron con `stageOrder` secuencial y sin duplicados, en el orden visual esperado, confirmado releyendo la tabla ordenada por `stageOrder` (no por el estado de React).

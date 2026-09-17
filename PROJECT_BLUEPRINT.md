@@ -42,7 +42,7 @@ Cubre:
 - Una extensión de Chrome que captura contactos desde perfiles de LinkedIn.
 - Gestión de tareas, con sincronización automática desde la fecha de "próximo seguimiento" de un contacto.
 - Un compositor de mensajes asistido por IA (Claude, vía Anthropic SDK).
-- Un builder de secuencias de outreach (diseño de pasos + inscripción de contactos — **sin envío real todavía**).
+- Un builder de secuencias de outreach (diseño de pasos + inscripción de contactos), con **envío real vía Resend** (disparo manual, sin cron — ver §18).
 - Listas de contactos, para inscribir a varios en una secuencia de una vez.
 - **Demand Signal Scoring**: un sistema de puntaje explicable (4 dimensiones + evidencia) para priorizar prospectos.
 - **Recomendación de Acción**: un motor de reglas determinístico que responde "¿qué hacer con este prospecto ahora?".
@@ -104,12 +104,10 @@ Este nivel de "todo en un commit" indica que el MVP se diseñó y construyó com
 
 ### Qué quedó pendiente (explícito, no inferido)
 
-- Envío real de las Secuencias (falta un dominio de correo verificado).
 - Integración nativa de Google Calendar (vía OAuth).
 - Modelo `Company` / `ContactEnrichment`.
 - Cualquier integración con Apollo, Apify, FullEnrich, Prospeo o similares.
-- Detección automática de señales (hoy 100% manual).
-- Narrowing de `host_permissions` de la extensión de Chrome (identificado en una revisión de seguridad, pendiente de que el usuario confirme la URL de producción exacta).
+- Detección automática de señales más allá del piloto de HIRING (ver §18) — el resto de los tipos siguen siendo manuales.
 - Remoción de la variable `SUPABASE_SERVICE_ROLE_KEY` de `.env.example` (existe pero no se usa en ningún lugar del código).
 
 ### Qué se descartó deliberadamente
@@ -235,7 +233,7 @@ erDiagram
 | Modelo | Propósito |
 |---|---|
 | `Task` | Tareas, con `isFollowUp` para distinguir la tarea auto-sincronizada de una creada a mano |
-| `Sequence` / `SequenceStep` / `SequenceEnrollment` | Diseño de secuencias de outreach — **sin envío real** (comentario explícito en el schema) |
+| `Sequence` / `SequenceStep` / `SequenceEnrollment` | Diseño de secuencias de outreach, con envío real vía Resend (ver §18) — `lastStepSentAt`/`lastMessageId`/`stopReason` en `SequenceEnrollment` sostienen el disparo y la pausa por webhook |
 | `Signal` | Evidencia detrás del Demand Signal Score (ver §7) |
 | `ContactList` / `ContactListMember` | Agrupación estática de contactos (many-to-many simple, sin membresía dinámica/inteligente) |
 | `ContactAudit` | Trail forense mínimo — hoy solo registra cambios de `Contact.category` |
@@ -799,7 +797,7 @@ Reusable principle: cualquier campo que termine en un `href`/`src` debe validars
 | Google Calendar (integración nativa) | TODO | evaluado y descartado por complejidad, no por olvido |
 | Compositor de mensajes con IA | DONE | Claude, vía Anthropic SDK |
 | Sequence builder (diseño de pasos) | DONE | |
-| Sequence — envío real | PARTIAL | motor construido (Resend + disparo manual + webhook) — ver §18; falta que el usuario cree la cuenta de Resend, verifique el subdominio y cargue las credenciales |
+| Sequence — envío real | DONE | Resend + `cx.witbor.com` verificado, probado con un envío real de punta a punta (cayó en Recibidos) — ver §18. Webhook de rebote/queja configurado, pendiente de confirmar con un rebote real |
 | Demand Signal Scoring (manual) | DONE | |
 | Sugerencias de score desde señales | DONE | Timing, Company Signal, Contact Signal |
 | Recomendación de Acción (reglas) | DONE | |
@@ -1100,6 +1098,22 @@ Cambios hechos después de la fecha de generación de este Blueprint, siguiendo 
 
 **Aplicabilidad futura:** el patrón "extraer la función de personalización a un módulo compartido para que la vista previa en cliente y el envío real en servidor nunca diverjan" es reutilizable en cualquier feature con preview-antes-de-enviar. El patrón "guardar solo el último id de mensaje externo en la propia fila, en vez de una tabla de historial" es reutilizable para cualquier integración de envío donde el receptor del webhook solo necesita encontrar "la fila que estaba esperando esto", no reconstruir un historial completo.
 
-**Todavía pendiente, fuera de esta sesión (no lo puede hacer un agente):** el usuario tiene que (1) crear la cuenta de Resend, (2) verificar el subdominio `mail.witbor.com` cargando los registros DNS que Resend pida en el proveedor DNS real, y (3) cargar `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` y `SEQUENCES_FROM_EMAIL` como variables de entorno en Vercel. Hasta que eso pase, el botón "Procesar envíos pendientes" devuelve un error controlado (`Falta configurar SEQUENCES_FROM_EMAIL`) en vez de fallar — no hay forma de que esto mande un email real todavía.
+**Todavía pendiente al cerrar esta entrada, fuera de esta sesión (no lo puede hacer un agente):** el usuario tiene que (1) crear la cuenta de Resend, (2) verificar un subdominio dedicado cargando los registros DNS que Resend pida en el proveedor DNS real, y (3) cargar `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` y `SEQUENCES_FROM_EMAIL` como variables de entorno en Vercel. Hasta que eso pase, el botón "Procesar envíos pendientes" devuelve un error controlado (`Falta configurar SEQUENCES_FROM_EMAIL`) en vez de fallar — no hay forma de que esto mande un email real todavía. **Actualización 2026-09-17: completado — ver la entrada siguiente.**
 
 **Verificación realizada:** `tsc --noEmit` y `next build` limpios; `eslint` limpio sobre todos los archivos nuevos/tocados. Script desechable contra la base de datos real (creado y borrado en la misma corrida) probando: (1) la lógica de "qué está vencido hoy" distingue correctamente una inscripción vencida de una que todavía espera sus `delayDays`; (2) la personalización `{{nombre}}`/`{{empresa}}` se aplica igual que en la vista previa; (3) un contacto sin email se detecta para saltearse sin tocar su inscripción; (4) tras "enviar" un paso, `currentStep` avanza y se guarda `lastMessageId`; (5) simular un evento `email.bounced` sobre ese `lastMessageId` pasa la inscripción a `STOPPED` con el motivo correcto; (6) una inscripción no vencida queda completamente intacta durante toda la corrida. Los 6 casos pasaron. No se probó el envío real (requiere las credenciales pendientes de arriba) ni la verificación de firma svix contra un webhook real de Resend (requiere el endpoint desplegado y accesible públicamente).
+
+### 2026-09-17 — Configuración real de Resend completada (subdominio `cx.witbor.com`, no `mail.witbor.com`) + fix de carteles desactualizados
+
+**Decisión:** el usuario configuró la cuenta de Resend y verificó el subdominio **`cx.witbor.com`** (no `mail.witbor.com` como se había sugerido originalmente) — ya tenía un CNAME activo apuntando a una landing page de Zoho (`zhs.zoholandingpage.com`), y decidió usarlo igual en vez de uno nuevo. Se cargaron las 4 variables de entorno en Vercel (`RESEND_API_KEY`, `SEQUENCES_FROM_EMAIL`, `RESEND_WEBHOOK_SECRET`, `SEQUENCES_DAILY_CAP`) y se armó el webhook en Resend apuntando a `/api/webhooks/resend`.
+
+**Hallazgo de DNS durante la verificación:** `cx.witbor.com` terminó con un CNAME (landing page) y un MX (`Enable Receiving` de Resend) coexistiendo en el mismo nombre — inválido por especificación DNS (un nombre con CNAME no puede tener otros tipos de registro). Confirmado con `nslookup` real. No afecta el envío (SPF/DKIM de Resend viven en sub-nombres distintos, `send.cx`/`rsend.cx`/`resend._domainkey.cx`, sin conflicto) — solo afecta "Enable Receiving", que el CRM no usa. Se recomendó apagar ese toggle en Resend en vez de tocar el DNS de la landing page.
+
+**Verificación real de extremo a extremo:** dos envíos de prueba reales (contacto de prueba con email real del usuario, inscripto en una secuencia con `delayDays: 0`, disparado con el botón de Ajustes) llegaron a la bandeja de **Recibidos** de Gmail, no a Spam — confirma el diagnóstico de reputación de dominio de la entrada anterior en la práctica, no solo por DNS.
+
+**Cambio de remitente:** el primer envío de prueba llegó con el remitente mostrando "Folkleaf" (el valor literal configurado en `SEQUENCES_FROM_EMAIL`). Se decidió cambiarlo a un nombre de persona (`Juan Habermann <secuencias@cx.witbor.com>`) para las secuencias de prospección fría, siguiendo el principio ya anotado en memoria de proyecto de que un remitente con nombre de marca en frío se parece más a una herramienta de marketing que a una persona — reforzado por un segundo envío de prueba que ya llegó con el nombre de persona.
+
+**Bug encontrado y corregido de paso:** los carteles de aviso en `SequenceList.tsx` y `SequenceBuilder.tsx` seguían diciendo "el envío automático se activa cuando conecten un dominio verificado" — texto de antes de esta sesión, ya falso desde que el motor de envío quedó construido. Se corrigieron para describir el comportamiento real (envío conectado, disparo manual sin cron).
+
+**Aplicabilidad futura:** verificar con `nslookup`/DNS real cualquier registro que un proveedor externo pida agregar sobre un subdominio que ya tiene otro uso, en vez de asumir que "subdominio" implica "space libre" — la coexistencia de tipos de registro incompatibles en el mismo nombre es un error real de DNS, no una preocupación teórica. También: un texto de UI que describe una limitación temporal ("todavía no está conectado") es deuda documentada que hay que revisar y corregir en cuanto esa limitación se resuelve — quedó como hallazgo casual acá, pero es el mismo principio que ya se venía aplicando a este Blueprint.
+
+**Verificación realizada:** dos emails reales entregados en Recibidos (Gmail), confirmando dominio, DKIM/SPF, remitente y placement todos correctos en producción. `tsc --noEmit` y `eslint` limpios tras el fix de los carteles. Pendiente todavía: confirmar con un rebote real que el webhook pasa una inscripción a `STOPPED` (prueba en curso, resultado no confirmado al cierre de esta entrada).

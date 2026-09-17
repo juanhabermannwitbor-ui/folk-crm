@@ -355,6 +355,9 @@ export function SequenceBuilder({
                       </option>
                     ))}
                   </select>
+                  {e.status === "STOPPED" && e.stopReason && (
+                    <p className="mt-1 text-xs text-red-500">{e.stopReason}</p>
+                  )}
                 </li>
               ))}
             </ul>

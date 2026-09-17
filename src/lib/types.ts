@@ -152,6 +152,9 @@ export type SequenceEnrollment = {
   status: EnrollmentStatus;
   currentStep: number;
   enrolledAt: string;
+  // Solo se completa cuando el webhook de Resend pausa la inscripción sola
+  // (rebote/queja) — ver POST /api/webhooks/resend.
+  stopReason: string | null;
 };
 
 export type Sequence = {

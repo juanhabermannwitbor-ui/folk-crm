@@ -838,7 +838,7 @@ Funcionalidades que requieren nuevo modelado, discutidas pero no iniciadas:
 - Modelo `Company`, con `Contact.companyId` reemplazando el texto libre.
 - `ContactEnrichment` + abstracción `enrichContact()` (patrón ya diseñado en §10).
 - Primer proveedor de enrichment real (a elegir entre Apollo/FullEnrich/Prospeo según cobertura LATAM — investigación ya hecha, ver historial de conversación fuera de este repo).
-- Dominio de envío verificado + scheduler real para Sequences.
+- Scheduler real (cron) para Sequences, si el disparo manual deja de alcanzar — el dominio de envío ya quedó verificado y funcionando (ver §18).
 - Multi-seat real (invitaciones a un workspace).
 
 ### Future

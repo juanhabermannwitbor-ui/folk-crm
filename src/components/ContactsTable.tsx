@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Search, Trash2, ExternalLink, Upload, ListPlus } from "lucide-react";
 import type { Contact, ContactCategory, ContactListSummary, PipelineStage } from "@/lib/types";
 import { ContactFormModal } from "@/components/ContactFormModal";
@@ -274,6 +274,10 @@ function AddToListModal({
   const [creatingName, setCreatingName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Same double-click race as ContactFormModal: `disabled={saving}` alone
+  // doesn't close the window before React commits the re-render, so a fast
+  // double-click could still fire this twice. A ref guard is synchronous.
+  const actionInFlightRef = useRef(false);
 
   useEffect(() => {
     fetch("/api/lists")
@@ -282,6 +286,8 @@ function AddToListModal({
   }, []);
 
   async function addTo(listId: string) {
+    if (actionInFlightRef.current) return;
+    actionInFlightRef.current = true;
     setSaving(true);
     setError(null);
     const res = await fetch(`/api/lists/${listId}/members`, {
@@ -289,6 +295,7 @@ function AddToListModal({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contactIds }),
     });
+    actionInFlightRef.current = false;
     setSaving(false);
     if (!res.ok) {
       setError("No se pudo agregar a la lista.");
@@ -299,7 +306,8 @@ function AddToListModal({
 
   async function createAndAdd() {
     const name = creatingName.trim();
-    if (!name) return;
+    if (!name || actionInFlightRef.current) return;
+    actionInFlightRef.current = true;
     setSaving(true);
     setError(null);
     const res = await fetch("/api/lists", {
@@ -308,11 +316,13 @@ function AddToListModal({
       body: JSON.stringify({ name }),
     });
     if (!res.ok) {
+      actionInFlightRef.current = false;
       setSaving(false);
       setError("No se pudo crear la lista.");
       return;
     }
     const { list } = await res.json();
+    actionInFlightRef.current = false;
     await addTo(list.id);
   }
 

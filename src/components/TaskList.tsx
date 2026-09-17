@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Plus, Trash2, ChevronDown, ChevronRight, CalendarPlus } from "lucide-react";
 import type { Contact, FollowUpAction, Task } from "@/lib/types";
 import { CATEGORY_LABELS, FOLLOW_UP_ACTION_LABELS } from "@/lib/types";
@@ -26,12 +26,14 @@ export function TaskList({
   const [contactId, setContactId] = useState("");
   const [actionType, setActionType] = useState<FollowUpAction | "">("");
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   const pending = useMemo(() => tasks.filter((t) => !t.completed), [tasks]);
   const completed = useMemo(() => tasks.filter((t) => t.completed), [tasks]);
 
   async function handleCreate() {
-    if (!title.trim()) return;
+    if (!title.trim() || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     const res = await fetch("/api/tasks", {
       method: "POST",
@@ -43,6 +45,7 @@ export function TaskList({
         actionType: actionType || null,
       }),
     });
+    savingRef.current = false;
     setSaving(false);
     if (!res.ok) return;
     const { task } = await res.json();

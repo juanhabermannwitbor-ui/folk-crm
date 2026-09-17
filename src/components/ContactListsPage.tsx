@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, ListChecks, Users, Trash2 } from "lucide-react";
 import type { ContactListSummary } from "@/lib/types";
@@ -11,16 +11,22 @@ export function ContactListsPage({ initialLists }: { initialLists: ContactListSu
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
+  // Guards against both the button and Enter-in-the-input triggering
+  // handleCreate at nearly the same time — `disabled={saving}` alone has a
+  // render-timing gap a ref closes synchronously.
+  const savingRef = useRef(false);
 
   async function handleCreate() {
     const trimmed = name.trim();
-    if (!trimmed) return;
+    if (!trimmed || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     const res = await fetch("/api/lists", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: trimmed }),
     });
+    savingRef.current = false;
     setSaving(false);
     if (!res.ok) return;
     const { list } = await res.json();

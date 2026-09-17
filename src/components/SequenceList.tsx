@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Send, Users, ListOrdered } from "lucide-react";
 import type { SequenceSummary } from "@/lib/types";
@@ -11,16 +11,19 @@ export function SequenceList({ initialSequences }: { initialSequences: SequenceS
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   async function handleCreate() {
     const trimmed = name.trim();
-    if (!trimmed) return;
+    if (!trimmed || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     const res = await fetch("/api/sequences", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: trimmed }),
     });
+    savingRef.current = false;
     setSaving(false);
     if (!res.ok) return;
     const { sequence } = await res.json();

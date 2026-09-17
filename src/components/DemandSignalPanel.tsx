@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import type { Contact, NextBestAction, Signal, SignalConfidence, SignalType } from "@/lib/types";
 import {
@@ -99,6 +99,7 @@ export function DemandSignalPanel({
   const [editingSignalId, setEditingSignalId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [creatingTask, setCreatingTask] = useState(false);
+  const creatingTaskRef = useRef(false);
   const [taskFeedback, setTaskFeedback] = useState<string | null>(null);
 
   useEffect(() => {
@@ -175,6 +176,8 @@ export function DemandSignalPanel({
   }
 
   async function handleCreateTask() {
+    if (creatingTaskRef.current) return;
+    creatingTaskRef.current = true;
     setCreatingTask(true);
     setTaskFeedback(null);
     const res = await fetch("/api/tasks", {
@@ -186,6 +189,7 @@ export function DemandSignalPanel({
         contactId: contact.id,
       }),
     });
+    creatingTaskRef.current = false;
     setCreatingTask(false);
     setTaskFeedback(res.ok ? "Tarea creada en Tareas." : "No se pudo crear la tarea.");
   }
@@ -433,12 +437,15 @@ function SignalForm({
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const savingRef = useRef(false);
 
   async function handleSave() {
     if (!description.trim()) {
       setError("La descripción es obligatoria.");
       return;
     }
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setError(null);
     const payload = {
@@ -456,6 +463,7 @@ function SignalForm({
         body: JSON.stringify(payload),
       }
     );
+    savingRef.current = false;
     setSaving(false);
     if (!res.ok) {
       setError("No se pudo guardar la señal.");

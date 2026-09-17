@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { CalendarPlus, Sparkles, X } from "lucide-react";
 import type { Contact, ContactCategory, FollowUpAction, PipelineStage } from "@/lib/types";
 import { CATEGORY_LABELS, FOLLOW_UP_ACTION_LABELS } from "@/lib/types";
@@ -59,9 +59,16 @@ export function ContactFormModal({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showAiModal, setShowAiModal] = useState(false);
+  // `disabled={saving}` alone isn't enough: a fast double-click can fire two
+  // submit events before React commits the re-render that disables the
+  // button, so both slip through and create two contacts. A ref guard is
+  // synchronous and closes that window — state wouldn't.
+  const submittingRef = useRef(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSaving(true);
     setError(null);
 
@@ -89,6 +96,7 @@ export function ContactFormModal({
       body: JSON.stringify(payload),
     });
 
+    submittingRef.current = false;
     setSaving(false);
 
     if (!res.ok) {
